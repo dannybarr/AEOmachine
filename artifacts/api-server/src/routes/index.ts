@@ -1,8 +1,48 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
+import modelsRouter from "./models";
+import overviewRouter from "./overview";
+import promptsRouter from "./prompts";
+import runsRouter from "./runs";
+import sourcesRouter from "./sources";
+import signalsRouter from "./signals";
+import siteTestsRouter from "./siteTests";
+import insightsRouter from "./insights";
+import perceptionRouter from "./perception";
+import gapRouter from "./gap";
+import discoveryRouter from "./discovery";
+import settingsRouter from "./settings";
+import companiesRouter from "./companies";
+import dashboardRouter from "./dashboard";
+import researchRouter from "./research";
+import strategyRouter from "./strategy";
+import trackingRouter from "./tracking";
+import progressRouter from "./progress";
+import caseStudiesRouter from "./caseStudies";
+import auditRouter from "./audit";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(modelsRouter);
+router.use(overviewRouter);
+router.use(promptsRouter);
+router.use(runsRouter);
+router.use(sourcesRouter);
+router.use(signalsRouter);
+router.use(siteTestsRouter);
+router.use(insightsRouter);
+router.use(perceptionRouter);
+router.use(gapRouter);
+router.use(discoveryRouter);
+router.use(settingsRouter);
+router.use(companiesRouter);
+router.use(dashboardRouter);
+router.use(researchRouter);
+router.use(strategyRouter);
+router.use(trackingRouter);
+router.use(progressRouter);
+router.use(caseStudiesRouter);
+router.use(auditRouter);
 
 export default router;

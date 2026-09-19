@@ -1,0 +1,300 @@
+@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,450;1,8..60,400&family=Inter:wght@400;450;500;550&display=swap');
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-card-border: var(--card-border);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover-border: var(--popover-border);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  /* Steep palette exposed as utilities (bg-blush, text-sienna, ...) */
+  --color-ink: var(--ink);
+  --color-paper: var(--paper);
+  --color-mist: var(--mist);
+  --color-fog: var(--fog);
+  --color-slate-quiet: var(--slate-quiet);
+  --color-ash: var(--ash);
+  --color-smoke: var(--smoke);
+  --color-blush: var(--blush);
+  --color-sienna: var(--sienna);
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
+  --color-warning: var(--warning);
+
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Source Serif 4', ui-serif, Georgia, serif;
+
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+}
+
+:root {
+  /* Steep tokens */
+  --ink: #17191c;
+  --paper: #ffffff;
+  --mist: #f2f2f3;
+  --fog: #fafafb;
+  --slate-quiet: #777b86;
+  --ash: #979799;
+  --smoke: #a3a6af;
+  --blush: #fbe1d1;
+  --sienna: #5d2a1a;
+
+  /* Restrained functional states — warm-leaning, quiet */
+  --positive: #3e6b4f;
+  --positive-surface: #eef3ee;
+  --negative: #a04432;
+  --negative-surface: #f9ece7;
+  --warning: #8a6b2f;
+  --warning-surface: #f7f1e3;
+
+  --background: #ffffff;
+  --foreground: #17191c;
+  --border: #ececec;
+  --input: #ececec;
+  --ring: #17191c;
+
+  --card: #ffffff;
+  --card-foreground: #17191c;
+  --card-border: #ececec;
+
+  --popover: #ffffff;
+  --popover-foreground: #17191c;
+  --popover-border: #ececec;
+
+  --primary: #17191c;
+  --primary-foreground: #ffffff;
+
+  --secondary: #f2f2f3;
+  --secondary-foreground: #17191c;
+
+  --muted: #fafafb;
+  --muted-foreground: #777b86;
+
+  --accent: #fbe1d1;
+  --accent-foreground: #5d2a1a;
+
+  --destructive: #a04432;
+  --destructive-foreground: #ffffff;
+
+  --radius: 16px;
+
+  --m1-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --m1-smooth: cubic-bezier(0.22, 0.68, 0, 1);
+
+  /* Elevation — only floating artifacts earn shadow */
+  --shadow-artifact: 0 0 0 1px rgba(4, 23, 43, 0.05), 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  --shadow-overlay: 0 0 0 1px rgba(4, 23, 43, 0.05), 0 8px 40px 0 rgba(0, 0, 0, 0.1);
+  --shadow-popover: 0 0 0 1px rgba(4, 23, 43, 0.05), 0 4px 24px 0 rgba(0, 0, 0, 0.08);
+
+  /* Analytics — restrained near-monochrome + sienna family */
+  --chart-corporate: #5d2a1a;
+  --chart-competitor: #b07a5c;
+  --chart-directory: #76574d;
+  --chart-comparison: #9a835f;
+  --chart-editorial: #565a64;
+  --chart-ugc: #979799;
+  --chart-other: #c3c5cb;
+  --chart-reference: #8a5a45;
+  --chart-institutional: #3e6b4f;
+  --chart-you: #17191c;
+}
+
+.dark {
+  --background: #ffffff;
+  --foreground: #17191c;
+  --border: #ececec;
+  --input: #ececec;
+  --ring: #17191c;
+
+  --card: #ffffff;
+  --card-foreground: #17191c;
+  --card-border: #ececec;
+
+  --popover: #ffffff;
+  --popover-foreground: #17191c;
+  --popover-border: #ececec;
+
+  --primary: #17191c;
+  --primary-foreground: #ffffff;
+
+  --secondary: #f2f2f3;
+  --secondary-foreground: #17191c;
+
+  --muted: #fafafb;
+  --muted-foreground: #777b86;
+
+  --accent: #fbe1d1;
+  --accent-foreground: #5d2a1a;
+
+  --destructive: #a04432;
+  --destructive-foreground: #ffffff;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+    font-size: 13.5px;
+    letter-spacing: -0.006em;
+    line-height: 1.5;
+    font-feature-settings: 'cv11', 'ss01';
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    letter-spacing: -0.015em;
+  }
+}
+
+@layer utilities {
+  /* Editorial serif heading — Signifier substitute, always weight 400 */
+  .steep-heading {
+    font-family: var(--font-serif);
+    font-weight: 400;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+  }
+
+  /* Decorative warm haze — backgrounds only, never over reading surfaces */
+  .steep-haze::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: -1;
+    background:
+      radial-gradient(58% 56% at 88% 5%, rgba(244, 176, 135, 0.72) 0%, rgba(251, 225, 209, 0.48) 42%, transparent 74%),
+      radial-gradient(52% 54% at 10% 3%, rgba(184, 207, 237, 0.68) 0%, rgba(224, 232, 244, 0.42) 44%, transparent 76%),
+      radial-gradient(50% 40% at 102% 48%, rgba(251, 225, 209, 0.34), transparent 72%),
+      linear-gradient(180deg, rgba(250, 250, 251, 0.3), transparent 54%);
+  }
+
+  /* Floating product artifact — the only elevated surface */
+  .steep-artifact {
+    background: var(--paper);
+    border-radius: 20px;
+    box-shadow: var(--shadow-artifact);
+  }
+
+  .m1-card {
+    background: var(--paper);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    transition: transform 300ms var(--m1-spring), box-shadow 300ms var(--m1-smooth);
+    position: relative;
+    will-change: transform;
+  }
+  .m1-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 24px;
+    box-shadow: var(--shadow-popover);
+    opacity: 0;
+    transition: opacity 300ms var(--m1-smooth);
+    pointer-events: none;
+  }
+  .m1-card:hover {
+    transform: translateY(-1px);
+  }
+  .m1-card:hover::after {
+    opacity: 1;
+  }
+
+  .m1-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 18px;
+    font-size: 13px;
+    font-weight: 450;
+    background: var(--primary);
+    color: var(--primary-foreground);
+    border-radius: 9999px;
+    transition: transform 200ms var(--m1-spring), opacity 200ms var(--m1-smooth);
+  }
+  .m1-btn:active {
+    transform: scale(0.97);
+  }
+  .m1-btn:hover {
+    opacity: 0.9;
+  }
+  .m1-btn--outline {
+    background: transparent;
+    color: var(--foreground);
+    border: 1px solid var(--foreground);
+  }
+  .m1-btn--outline:hover {
+    background: var(--mist);
+    opacity: 1;
+  }
+  .m1-btn--ghost {
+    background: transparent;
+    color: var(--foreground);
+  }
+  .m1-btn--ghost:hover {
+    background: var(--mist);
+    opacity: 1;
+  }
+
+  .m1-stagger {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  .m1-stagger.visible {
+    animation: m1FadeUp 550ms var(--m1-smooth) forwards;
+  }
+  .m1-stagger:nth-child(1).visible { animation-delay: 0ms; }
+  .m1-stagger:nth-child(2).visible { animation-delay: 90ms; }
+  .m1-stagger:nth-child(3).visible { animation-delay: 180ms; }
+  .m1-stagger:nth-child(4).visible { animation-delay: 270ms; }
+  .m1-stagger:nth-child(5).visible { animation-delay: 360ms; }
+  .m1-stagger:nth-child(6).visible { animation-delay: 450ms; }
+  .m1-stagger:nth-child(7).visible { animation-delay: 540ms; }
+
+  @keyframes m1FadeUp {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .m1-sidebar-link {
+    transition: background 160ms var(--m1-smooth), color 160ms var(--m1-smooth);
+  }
+  .m1-sidebar-link:hover {
+    background: rgba(23, 25, 28, 0.04);
+  }
+}

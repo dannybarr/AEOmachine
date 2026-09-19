@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "AEO Intelligence Platform"
+description = "An AEO intelligence platform for managing companies and prompts, running answer simulations, tracking visibility, researching content gaps, and auditing website performance."
+version = "1.0.0"
+id = "artifacts/aeo-platform"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25643
+
+[services.development]
+run = "pnpm --filter @workspace/aeo-platform run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/aeo-platform", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/aeo-platform/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25643"
+BASE_PATH = "/"

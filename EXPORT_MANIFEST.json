@@ -1,0 +1,70 @@
+{
+  "name": "AEO Intelligence source export",
+  "formatVersion": 1,
+  "generatedAt": "2026-09-19T14:39:30Z",
+  "archiveRoot": "aeo-intelligence-source",
+  "contents": {
+    "artifacts": [
+      "artifacts/aeo-platform",
+      "artifacts/aeo-research",
+      "artifacts/api-server"
+    ],
+    "libraries": [
+      "lib/api-client-react",
+      "lib/api-spec",
+      "lib/api-zod",
+      "lib/db"
+    ],
+    "support": [
+      "scripts",
+      "package.json",
+      "pnpm-lock.yaml",
+      "pnpm-workspace.yaml",
+      "tsconfig.json",
+      "tsconfig.base.json",
+      ".env.example",
+      ".gitignore",
+      "README.md"
+    ],
+    "sqlMigrationFiles": 25,
+    "testFiles": 35
+  },
+  "excluded": [
+    "credentials and local environment files",
+    "dependency directories",
+    "generated build output",
+    "source control and agent history",
+    "deployment-platform metadata",
+    "design canvas artifacts",
+    "uploaded and attached assets"
+  ],
+  "branding": {
+    "status": "neutralized",
+    "externalBrandAssetsIncluded": false,
+    "personalOwnerIdentityIncluded": false
+  },
+  "validation": {
+    "frozenInstall": "passed with pnpm 10.26.1",
+    "platformProductionBuild": "passed",
+    "researchProductionBuild": "passed",
+    "apiProductionBuild": "passed",
+    "typecheck": "86 generated-schema ordering errors; byte-for-byte error list matches the source workspace baseline",
+    "freshDatabase": {
+      "performedBy": "independent database validation worker against a clean archive extraction and disposable PostgreSQL 16 instance",
+      "bootstrap": "passed: 32 tables, 74 indexes, all 25 SQL migrations",
+      "freshOnlyGuard": "passed: a second bootstrap was refused",
+      "strengthenedGuardReview": "the final source explicitly queries public pg_class objects (tables, partitioned tables, views, materialized views, sequences, and foreign tables) plus public enums before the forced Drizzle command can execute",
+      "apiSmoke": "passed: health and research returned 200; company and prompt creation returned 201 and subsequent reads returned 200",
+      "backgroundJobs": "passed: automatic onboarding completed and its durable audit remained queryable",
+      "noProviderKey": "passed: simulation returned the expected 503 without provider credentials"
+    },
+    "freshExtraction": {
+      "install": "passed with pnpm install --frozen-lockfile",
+      "build": "passed for the platform, research dashboard, and API",
+      "testsWithoutDatabase": "executed: 36 of 42 Node-runner tests passed; six DB-importing test files stopped on the explicit missing DATABASE_URL guard",
+      "testsWithDisposablePostgres16": "executed: 60 of 62 Node-runner tests passed; actionEvidence.test.ts and strategyBrief.test.ts fail during initialization on the generated-schema ReferenceError at lib/api-zod/src/generated/api.ts:2067; Vitest was not reached because the scripts are chained with &&",
+      "baselineComparison": "the original source workspace produced the identical 60 of 62 result and identical two failures in the same disposable database environment"
+    }
+  },
+  "integrity": "See MANIFEST.sha256 for SHA-256 checksums of every exported file except the checksum manifest itself."
+}

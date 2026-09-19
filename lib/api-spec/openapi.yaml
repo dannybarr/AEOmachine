@@ -3,20 +3,67 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: AEO Intelligence Platform API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: caseStudies
+    description: Evolving client case studies with dated revisions
+  - name: overview
+    description: Dashboard overview aggregates
+  - name: prompts
+    description: Tracked test prompts
+  - name: runs
+    description: Prompt simulation runs
+  - name: sources
+    description: Domains, URLs and source distribution
+  - name: signals
+    description: On-page and off-page signals
+  - name: siteTests
+    description: Site Testing Zone lab
+  - name: insights
+    description: Rule-based findings computed from real run data
+  - name: perception
+    description: How AI engines describe the tracked brand
+  - name: gap
+    description: Prompts and sources where the brand is absent
+  - name: discovery
+    description: Prompt coverage and AI-suggested prompts
+  - name: settings
+    description: Competitor configuration and system status
+  - name: companies
+    description: Tracked companies (each scopes its own prompts, runs, and sources)
+  - name: dashboard
+    description: Cross-company industry intelligence
+  - name: research
+    description: Published-industry research datasets (curated, source-attributed)
+  - name: strategy
+    description: Strategy Ideas library and per-company 5-step AEO playbook
+  - name: tracking
+    description: Bulk prompt tracking runs and daily automation
+  - name: progress
+    description: AEO progress over time — visibility, citations, and action impact
 paths:
+  /research/aeo:
+    get:
+      operationId: getAeoResearch
+      tags: [research]
+      summary: Curated AEO/AI-citation-behaviour research dataset with source attribution
+      responses:
+        "200":
+          description: Research dataset
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AeoResearch"
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +71,4316 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /models:
+    get:
+      operationId: listModels
+      tags: [health]
+      summary: Available answer-engine models for simulation
+      responses:
+        "200":
+          description: Model catalog
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ModelInfo"
+  /overview/summary:
+    get:
+      operationId: getOverviewSummary
+      tags: [overview]
+      summary: Headline visibility metrics for a company
+      parameters:
+        - name: companyId
+          in: query
+          required: true
+          schema: { type: integer }
+        - name: days
+          in: query
+          schema: { type: integer, default: 30 }
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OverviewSummary"
+  /overview/timeseries:
+    get:
+      operationId: getOverviewTimeseries
+      tags: [overview]
+      summary: Daily visibility and retrieval counts
+      parameters:
+        - name: companyId
+          in: query
+          required: true
+          schema: { type: integer }
+        - name: days
+          in: query
+          schema: { type: integer, default: 30 }
+      responses:
+        "200":
+          description: Daily points
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TimeseriesPoint"
+  /prompts/simulate-all:
+    post:
+      operationId: simulateAllPrompts
+      tags: [tracking]
+      summary: Run every active prompt for a company across its configured models
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SimulateAllBody"
+      responses:
+        "200":
+          description: Batch result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrackingJob"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "409":
+          description: A batch is already running for this company
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "503":
+          description: Model API key not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /prompts/{id}/simulate-all:
+    post:
+      operationId: simulatePromptAllModels
+      tags: [tracking]
+      summary: Run one prompt across every enabled registry model as a durable server-side job
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Job started (poll /tracking/jobs?promptId=)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrackingJob"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "404":
+          description: Prompt not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "409":
+          description: A run is already in progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "503":
+          description: Model API key not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /tracking/jobs/{id}/attempts:
+    get:
+      operationId: getTrackingJobAttempts
+      tags: [tracking]
+      summary: Per-model attempt outcomes for a job (exact partial-failure reporting)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Attempt counts grouped by model
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/JobModelAttempts"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /methodology:
+    get:
+      operationId: getMethodology
+      tags: [dashboard]
+      summary: Registry snapshot, coverage, sample sizes, and denominator rules for the selected window
+      parameters:
+        - name: companyId
+          in: query
+          schema: { type: integer }
+        - name: days
+          in: query
+          schema: { type: integer, default: 30 }
+      responses:
+        "200":
+          description: Methodology
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Methodology"
+  /models/citation-quality:
+    get:
+      operationId: getCitationQuality
+      tags: [models]
+      summary: Per-model citation quality diagnostics over stored runs (outcome counts, verified citation yield, zero-citation eligible runs)
+      parameters:
+        - name: companyId
+          in: query
+          schema: { type: integer }
+        - name: days
+          in: query
+          schema: { type: integer, default: 30 }
+      responses:
+        "200":
+          description: Per-model citation quality report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CitationQualityReport"
+  /models/contract-audit:
+    get:
+      operationId: getContractAudit
+      tags: [models]
+      summary: Latest live provider contract audit report (operator-only; requires x-operator-token)
+      parameters:
+        - name: x-operator-token
+          in: header
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Contract audit report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContractAuditReport"
+        "401":
+          description: Operator token missing or invalid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "404":
+          description: No audit has been run yet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+    post:
+      operationId: startContractAudit
+      tags: [models]
+      summary: Start a live provider contract audit (operator-only; durable cooldown between runs; triggers paid provider calls)
+      parameters:
+        - name: x-operator-token
+          in: header
+          required: true
+          schema: { type: string }
+      responses:
+        "202":
+          description: Audit started; poll GET /models/contract-audit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContractAuditReport"
+        "401":
+          description: Operator token missing or invalid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "409":
+          description: An audit is already running
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "429":
+          description: Durable cooldown between audits is still active
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "503":
+          description: Model gateway or operator auth not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /tracking/jobs:
+    get:
+      operationId: listTrackingJobs
+      tags: [tracking]
+      summary: Recent bulk tracking runs for a company
+      parameters:
+        - name: companyId
+          in: query
+          required: true
+          schema: { type: integer }
+        - name: promptId
+          in: query
+          schema: { type: integer }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 10 }
+      responses:
+        "200":
+          description: Jobs, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TrackingJob"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /progress:
+    get:
+      operationId: getProgress
+      tags: [progress]
+      summary: AEO progress over time with strategy-action milestones
+      parameters:
+        - name: companyId
+          in: query
+          required: true
+          schema: { type: integer }
+        - name: days
+          in: query
+          schema: { type: integer, default: 30 }
+      responses:
+        "200":
+          description: Progress dataset
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProgressResponse"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /case-study:
+    get:
+      operationId: getCaseStudy
+      tags: [caseStudies]
+      summary: A company's case study, revision history, job state, and new-activity counts
+      parameters:
+        - name: companyId
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Case study overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaseStudyOverview"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /case-study/context:
+    put:
+      operationId: saveCaseStudyContext
+      tags: [caseStudies]
+      summary: Save the authored starting position, strategic focus, and notes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CaseStudyContextInput"
+      responses:
+        "200":
+          description: Saved case study
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaseStudyRecord"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /case-study/refresh:
+    post:
+      operationId: refreshCaseStudy
+      tags: [caseStudies]
+      summary: Start a background narrative refresh (poll /case-study/jobs)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CaseStudyRefreshInput"
+      responses:
+        "202":
+          description: Refresh job started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaseStudyJob"
+        "409":
+          description: A refresh is already running
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "503":
+          description: Generation unavailable (no model key)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /case-study/jobs:
+    get:
+      operationId: listCaseStudyJobs
+      tags: [caseStudies]
+      summary: Recent case-study refresh jobs for a company, newest first
+      parameters:
+        - name: companyId
+          in: query
+          required: true
+          schema: { type: integer }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 5 }
+      responses:
+        "200":
+          description: Jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CaseStudyJob"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /case-study/revisions/{id}:
+    patch:
+      operationId: updateCaseStudyRevision
+      tags: [caseStudies]
+      summary: Edit the wording of a revision or approve/unapprove it
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CaseStudyRevisionUpdate"
+      responses:
+        "200":
+          description: Updated revision
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaseStudyRevision"
+        "404":
+          description: Revision not found for this company
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /prompts:
+    get:
+      operationId: listPrompts
+      tags: [prompts]
+      summary: List tracked prompts for a company
+      parameters:
+        - name: companyId
+          in: query
+          required: true
+          schema: { type: integer }
+        - name: topic
+          in: query
+          schema: { type: string }
+        - name: tag
+          in: query
+          schema: { type: string }
+        - name: search
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Prompts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Prompt"
+    post:
+      operationId: createPrompt
+      tags: [prompts]
+      summary: Add a prompt to track
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PromptInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Prompt"
+  /prompts/{id}:
+    get:
+      operationId: getPrompt
+      tags: [prompts]
+      summary: Get a prompt with its latest run stats
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Prompt detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromptDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+    patch:
+      operationId: updatePrompt
+      tags: [prompts]
+      summary: Update a prompt
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PromptUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Prompt"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+    delete:
+      operationId: deletePrompt
+      tags: [prompts]
+      summary: Delete a prompt
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+  /prompts/{id}/simulate:
+    post:
+      operationId: simulatePrompt
+      tags: [prompts]
+      summary: Run the prompt against a real AI model and record the answer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SimulationRequest"
+      responses:
+        "201":
+          description: Recorded run
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromptRun"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /prompts/{id}/runs:
+    get:
+      operationId: listPromptRuns
+      tags: [runs]
+      summary: All recorded runs for a prompt
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Runs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PromptRun"
+  /prompts/{id}/insights:
+    get:
+      operationId: getPromptInsights
+      tags: [prompts]
+      summary: Prompt-level tracking insights (visibility over time, sources, source types)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: days
+          in: query
+          required: false
+          schema: { type: integer, minimum: 7, maximum: 365, default: 30 }
+      responses:
+        "200":
+          description: Prompt insights
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromptInsights"
+        "404":
+          description: Prompt not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /runs:
+    get:
+      operationId: listRuns
+      tags: [runs]
+      summary: Recent simulation runs for a company
+      parameters:
+        - name: companyId
+          in: query
+          required: true
+          schema: { type: integer }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 25 }
+        - name: model
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Recent runs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PromptRun"
+  /runs/{id}:
+    get:
+      operationId: getRun
+      tags: [runs]
+      summary: Full run detail including answer text and citations
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Run detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromptRunDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /sources/domains:
+    get:
+      operationId: listDomains
+      tags: [sources]
+      summary: Domains that contribute to AI answers, ranked by retrievals
+      parameters:
+        - name: companyId
+          in: query
+          required: true
+          schema: { type: integer }
+        - name: view
+          in: query
+          schema:
+            type: string
+            enum: [top, new, trending, losing]
+            default: top
+        - name: days
+          in: query
+          schema: { type: integer, default: 30 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        "200":
+          description: Domains
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DomainStat"
+  /sources/domain-types:
+    get:
+      operationId: getDomainTypeDistribution
+      tags: [sources]
+      summary: Retrieval share by domain type
+      parameters:
+        - name: companyId
+          in: query
+          required: true
+          schema: { type: integer }
+        - name: days
+          in: query
+          schema: { type: integer, default: 30 }
+      responses:
+        "200":
+          description: Distribution
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DomainTypeDistribution"
+  /sources/urls:
+    get:
+      operationId: listUrls
+      tags: [sources]
+      summary: Individual URLs cited in AI answers
+      parameters:
+        - name: companyId
+          in: query
+          required: true
+          schema: { type: integer }
+        - name: days
+          in: query
+          schema: { type: integer, default: 30 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        "200":
+          description: URLs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UrlStat"
+  /signals:
+    get:
+      operationId: listSignals
+      tags: [signals]
+      summary: Company-grounded on-page and off-page action recommendations
+      parameters:
+        - name: companyId
+          in: query
+          required: true
+          schema: { type: integer }
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum: [on_page, off_page]
+      responses:
+        "200":
+          description: Signals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Signal"
+  /site-tests:
+    get:
+      operationId: listSiteTests
+      tags: [siteTests]
+      summary: Sites tracked in the Site Testing Zone for one company
+      parameters:
+        - name: companyId
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Site tests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SiteTest"
+    post:
+      operationId: createSiteTest
+      tags: [siteTests]
+      summary: Add a site to the testing lab
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SiteTestInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SiteTest"
+  /site-tests/{id}:
+    get:
+      operationId: getSiteTest
+      tags: [siteTests]
+      summary: Site test with snapshot history (must belong to the company)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: companyId
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Site test detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SiteTestDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+    delete:
+      operationId: deleteSiteTest
+      tags: [siteTests]
+      summary: Remove a site from the lab (must belong to the company)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: companyId
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+  /site-tests/{id}/audit:
+    post:
+      operationId: runSiteAudit
+      tags: [siteTests]
+      summary: Fetch the live site and record a real on-page AEO audit snapshot
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: companyId
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        "201":
+          description: New snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SiteSnapshot"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "502":
+          description: Site unreachable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /insights:
+    get:
+      operationId: listInsights
+      tags: [insights]
+      summary: Findings computed from real runs and citations (no AI, no estimates)
+      parameters:
+        - name: companyId
+          in: query
+          required: true
+          schema: { type: integer }
+        - name: days
+          in: query
+          schema: { type: integer, default: 30 }
+      responses:
+        "200":
+          description: Insights
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Insight"
+  /perception:
+    get:
+      operationId: getPerception
+      tags: [perception]
+      summary: Per-model brand mention rates with verbatim answer excerpts
+      parameters:
+        - name: companyId
+          in: query
+          required: true
+          schema: { type: integer }
+        - name: days
+          in: query
+          schema: { type: integer, default: 30 }
+      responses:
+        "200":
+          description: Perception by model
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PerceptionModel"
+  /gap-analysis:
+    get:
+      operationId: getGapAnalysis
+      tags: [gap]
+      summary: Prompts where the brand is absent and competitor citation share
+      parameters:
+        - name: companyId
+          in: query
+          required: true
+          schema: { type: integer }
+        - name: days
+          in: query
+          schema: { type: integer, default: 30 }
+      responses:
+        "200":
+          description: Gap analysis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GapAnalysis"
+  /gap-analysis/research:
+    post:
+      operationId: startGapResearch
+      tags: [gap]
+      summary: Start an asynchronous evidence-backed Gap Analysis research job
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartGapResearchInput"
+      responses:
+        "202":
+          description: Research job accepted; poll jobs for progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GapResearchJob"
+        "409":
+          description: Research already running for this company
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /gap-analysis/research/jobs:
+    get:
+      operationId: listGapResearchJobs
+      tags: [gap]
+      summary: Recent Gap Analysis research jobs with live progress counters
+      parameters:
+        - name: companyId
+          in: query
+          required: true
+          schema: { type: integer }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 5 }
+      responses:
+        "200":
+          description: Research jobs, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GapResearchJob"
+  /gap-analysis/report:
+    get:
+      operationId: getGapResearchReport
+      tags: [gap]
+      summary: Latest completed Gap Analysis research snapshot with findings, evidence and trends
+      parameters:
+        - name: companyId
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Latest snapshot (null when no completed research exists)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GapResearchReport"
+  /gap-analysis/findings/{id}/promote:
+    post:
+      operationId: promoteGapFinding
+      tags: [gap]
+      summary: Promote a research finding into a Strategy Action with auditable provenance
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PromoteGapFindingInput"
+      responses:
+        "201":
+          description: Strategy item created with provenance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromoteGapFindingResult"
+        "404":
+          description: Finding or idea not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "409":
+          description: Finding already promoted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /discovery/coverage:
+    get:
+      operationId: getDiscoveryCoverage
+      tags: [discovery]
+      summary: Prompt coverage and mention rate by topic
+      parameters:
+        - name: companyId
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Coverage
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscoveryCoverage"
+  /discovery/suggest:
+    post:
+      operationId: suggestPrompts
+      tags: [discovery]
+      summary: AI-suggested new prompts (clearly labeled suggestions, never metrics)
+      parameters:
+        - name: companyId
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Suggestions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DiscoverySuggestion"
+        "429":
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "502":
+          description: Suggestion model unavailable or returned unparseable output
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "503":
+          description: Model API key not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /discovery/suggestions:
+    get:
+      operationId: listDiscoverySuggestions
+      tags: [discovery]
+      summary: Persisted prompt suggestions with their review state
+      parameters:
+        - name: companyId
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Suggestions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DiscoverySuggestion"
+  /discovery/suggestions/{id}/add:
+    post:
+      operationId: addDiscoverySuggestion
+      tags: [discovery]
+      summary: Create a tracked prompt from a suggestion (idempotent per suggestion)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: companyId
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Updated suggestion
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscoverySuggestion"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "409":
+          description: Already added or dismissed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /discovery/suggestions/{id}/dismiss:
+    post:
+      operationId: dismissDiscoverySuggestion
+      tags: [discovery]
+      summary: Dismiss a suggestion so it stops appearing in the review list
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: companyId
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Updated suggestion
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscoverySuggestion"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "409":
+          description: Already added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /discovery/assessment:
+    post:
+      operationId: startWebsiteAssessment
+      tags: [discovery]
+      summary: Start a durable bounded assessment of the selected company's website
+      parameters:
+        - $ref: "#/components/parameters/CompanyId"
+      responses:
+        "202":
+          description: Assessment accepted; poll this path with GET
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WebsiteAssessmentJob" }
+        "409":
+          description: An assessment is already running for this company
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorMessage" }
+        "429":
+          description: More than three explicit website rescans were requested in 24 hours
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorMessage" }
+        "503":
+          description: Model generation is not configured
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorMessage" }
+    get:
+      operationId: getWebsiteAssessment
+      tags: [discovery]
+      summary: Poll the current job while reusing the latest durable profile, pages, and audit snapshots
+      parameters:
+        - $ref: "#/components/parameters/CompanyId"
+      responses:
+        "200":
+          description: Latest company-scoped assessment
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WebsiteAssessment" }
+        "404":
+          description: No assessment exists
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorMessage" }
+  /companies/{id}/audit:
+    get:
+      operationId: getCompanyAudit
+      tags: [companies]
+      summary: Get the latest durable deterministic website audit and current assessment state
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Latest audit, which remains available if later assessment research fails
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CompanyAudit" }
+        "404":
+          description: Company or assessment not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorMessage" }
+        "400":
+          description: Invalid company id
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorMessage" }
+  /companies/{id}/audit/rerun:
+    post:
+      operationId: rerunCompanyAudit
+      tags: [companies]
+      summary: Start a non-blocking audit rerun using the existing assessment machinery
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AuditRerunInput" }
+      responses:
+        "202":
+          description: Assessment accepted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WebsiteAssessmentJob" }
+        "409":
+          description: An assessment is already running
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorMessage" }
+        "400":
+          description: Invalid path parameter or missing request body
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorMessage" }
+        "404":
+          description: Company not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorMessage" }
+        "429":
+          description: More than three manual audit reruns were requested in 24 hours
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorMessage" }
+  /companies/{id}/audit/quick-wins/promote:
+    post:
+      operationId: promoteAuditQuickWin
+      tags: [companies, strategy]
+      summary: Idempotently promote an evidenced audit quick win to an on-page strategy item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AuditQuickWinPromotionInput" }
+      responses:
+        "200":
+          description: Existing or newly promoted strategy action
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuditQuickWinPromotion" }
+        "404":
+          description: Company, audit, or quick win not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorMessage" }
+        "400":
+          description: Invalid path parameter or promotion body
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorMessage" }
+  /discovery/assessment/profile/approve:
+    post:
+      operationId: approveInferredCompanyProfile
+      tags: [discovery]
+      summary: Approve or edit suggested profile fields and atomically make them canonical
+      parameters:
+        - $ref: "#/components/parameters/CompanyId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/InferredProfileApproval" }
+      responses:
+        "200":
+          description: Approved profile
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InferredCompanyProfile" }
+        "409":
+          description: Profile is stale or already reviewed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorMessage" }
+  /discovery/recommendations:
+    get:
+      operationId: listAudienceRecommendations
+      tags: [discovery]
+      summary: List durable enriched prompt recommendations for one company
+      parameters:
+        - $ref: "#/components/parameters/CompanyId"
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, added, dismissed, all]
+            default: pending
+      responses:
+        "200":
+          description: Recommendations
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AudienceRecommendation" }
+  /discovery/recommendations/{id}/dismiss:
+    post:
+      operationId: dismissAudienceRecommendation
+      tags: [discovery]
+      summary: Dismiss a pending recommendation
+      parameters:
+        - name: companyId
+          in: query
+          required: true
+          schema: { type: integer }
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Dismissed recommendation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AudienceRecommendation" }
+        "409":
+          description: Recommendation is no longer pending
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorMessage" }
+  /discovery/recommendations/bulk-add:
+    post:
+      operationId: bulkAddAudienceRecommendations
+      tags: [discovery]
+      summary: Atomically add selected recommendations as topic-linked tracked prompts
+      parameters:
+        - $ref: "#/components/parameters/CompanyId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BulkAddRecommendations" }
+      responses:
+        "200":
+          description: Added or previously-added recommendations
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AudienceRecommendation" }
+        "404":
+          description: A recommendation does not belong to the company
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorMessage" }
+        "409":
+          description: A dismissed recommendation was selected
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorMessage" }
+  /system/status:
+    get:
+      operationId: getSystemStatus
+      tags: [settings]
+      summary: Simulation readiness (model API key configured)
+      responses:
+        "200":
+          description: Status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemStatus"
+  /companies:
+    get:
+      operationId: listCompanies
+      tags: [companies]
+      summary: Portfolio of tracked companies with real visibility stats
+      parameters:
+        - name: days
+          in: query
+          schema: { type: integer, default: 30 }
+      responses:
+        "200":
+          description: Companies
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CompanySummary"
+    post:
+      operationId: createCompany
+      tags: [companies]
+      summary: Start tracking a new company
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompanyInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanySummary"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /companies/{id}:
+    put:
+      operationId: updateCompany
+      tags: [companies]
+      summary: Update a company's name, domain, or industry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompanyInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanySummary"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+    patch:
+      operationId: patchCompany
+      tags: [companies]
+      summary: Partially update a company's profile (strategic context fields included)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompanyPatch"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanySummary"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+    delete:
+      operationId: deleteCompany
+      tags: [companies]
+      summary: Stop tracking a company and delete its data
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "409":
+          description: Cannot delete the last remaining company
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [dashboard]
+      summary: Industry-level intelligence across every tracked company (real data only)
+      parameters:
+        - name: days
+          in: query
+          schema: { type: integer, enum: [30, 90, 180], default: 30 }
+        - name: all
+          in: query
+          description: Include all historical runs, ignoring days
+          schema: { type: boolean, default: false }
+        - name: model
+          in: query
+          description: Canonical registry model id to filter by
+          schema: { type: string }
+        - name: topic
+          in: query
+          description: Filter by company industry/topic
+          schema: { type: string }
+      responses:
+        "200":
+          description: Dashboard
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IndustryDashboard"
+  /settings/competitors:
+    get:
+      operationId: listCompetitors
+      tags: [settings]
+      summary: Tracked competitor domains for a company
+      parameters:
+        - name: companyId
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Competitors
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RegistryDomain"
+    post:
+      operationId: addCompetitor
+      tags: [settings]
+      summary: Track a new competitor domain
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddCompetitorRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegistryDomain"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /settings/competitors/{id}:
+    delete:
+      operationId: removeCompetitor
+      tags: [settings]
+      summary: Stop tracking a competitor domain
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Removed
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /strategy/ideas:
+    get:
+      operationId: listStrategyIdeas
+      tags: [strategy]
+      summary: Reusable, client-agnostic strategy plays (the Ideas library)
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum: [on_page, off_page]
+      responses:
+        "200":
+          description: Ideas catalog
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StrategyIdea"
+  /strategy/items:
+    get:
+      operationId: listStrategyItems
+      tags: [strategy]
+      summary: Deployed strategy items (idea x company) with status tracking
+      parameters:
+        - name: companyId
+          in: query
+          schema: { type: integer }
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum: [on_page, off_page]
+      responses:
+        "200":
+          description: Deployed strategy items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StrategyItem"
+    post:
+      operationId: deployStrategyIdea
+      tags: [strategy]
+      summary: Deploy a library idea or create and deploy a new reusable idea
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StrategyItemInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StrategyItem"
+        "404":
+          description: Idea or company not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /strategy/items/{id}:
+    patch:
+      operationId: updateStrategyItem
+      tags: [strategy]
+      summary: Update status, money topic, notes or target date of a deployed item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StrategyItemUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StrategyItem"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+    delete:
+      operationId: deleteStrategyItem
+      tags: [strategy]
+      summary: Remove a deployed strategy item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "409":
+          description: Audit-backed items retain immutable measurement history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /companies/{id}/playbook:
+    get:
+      operationId: getCompanyPlaybook
+      tags: [strategy]
+      summary: Per-company 5-step AEO playbook with progress on each step
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Playbook workspace data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyPlaybook"
+        "404":
+          description: Company not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /companies/{id}/money-topics:
+    post:
+      operationId: createMoneyTopic
+      tags: [strategy]
+      summary: Capture a money topic for a company (playbook step 1)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MoneyTopicInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MoneyTopic"
+        "404":
+          description: Company not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /money-topics/{id}/prompts:
+    post:
+      operationId: createTopicPrompt
+      tags: [strategy]
+      summary: Create a normal tracked prompt linked to a money topic
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TopicPromptInput"
+      responses:
+        "201":
+          description: Created tracked prompt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Prompt"
+        "404":
+          description: Money topic not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /money-topics/{id}/prompts/attach:
+    post:
+      operationId: attachPromptToTopic
+      tags: [strategy]
+      summary: Associate an existing tracked prompt with a money topic
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AttachPromptInput"
+      responses:
+        "200":
+          description: Updated prompt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Prompt"
+        "400":
+          description: Prompt belongs to another company
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "404":
+          description: Money topic or prompt not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /money-topics/{id}/prompts/{promptId}:
+    delete:
+      operationId: detachPromptFromTopic
+      tags: [strategy]
+      summary: Detach a tracked prompt from a money topic (prompt is kept)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: promptId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Detached
+        "404":
+          description: Money topic or linked prompt not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /money-topics/{id}:
+    delete:
+      operationId: deleteMoneyTopic
+      tags: [strategy]
+      summary: Remove a money topic
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /companies/{id}/measurements:
+    post:
+      operationId: createWeeklyMeasurement
+      tags: [strategy]
+      summary: Record a weekly measurement rollup for a company (playbook step 5)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WeeklyMeasurementInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WeeklyMeasurement"
+        "404":
+          description: Company not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /measurements/{id}:
+    delete:
+      operationId: deleteWeeklyMeasurement
+      tags: [strategy]
+      summary: Remove a weekly measurement row
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
 components:
+  parameters:
+    CompanyId:
+      name: companyId
+      in: query
+      required: true
+      schema: { type: integer }
   schemas:
     HealthStatus:
       type: object
       properties:
         status:
           type: string
+      required: [status]
+    ModelInfo:
+      type: object
+      properties:
+        id: { type: string }
+        label: { type: string }
+        provider: { type: string }
+        family: { type: string }
+        version: { type: string }
+        supportsSearch: { type: boolean }
+        available: { type: boolean }
+        unavailableReason: { type: ["string", "null"] }
+        order: { type: integer }
+      required: [id, label, provider, family, version, supportsSearch, available, order]
+    Methodology:
+      type: object
+      required: [days, windowStartUtc, registry, enabledModelCount, prompts, runs, citations, attempts]
+      properties:
+        days: { type: integer }
+        windowStartUtc: { type: string }
+        registryValidatedAt: { type: ["string", "null"] }
+        enabledModelCount: { type: integer }
+        registry:
+          type: array
+          items:
+            type: object
+            required: [id, label, provider, supportsSearch, available]
+            properties:
+              id: { type: string }
+              label: { type: string }
+              provider: { type: string }
+              supportsSearch: { type: boolean }
+              available: { type: boolean }
+              unavailableReason: { type: ["string", "null"] }
+        prompts:
+          type: object
+          required: [total, active]
+          properties:
+            total: { type: integer }
+            active: { type: integer }
+        runs:
+          type: object
+          required: [total, citationEligible, searchIneligible, legacy]
+          properties:
+            total: { type: integer }
+            citationEligible: { type: integer }
+            searchIneligible: { type: integer }
+            legacy: { type: integer }
+            outcomes:
+              type: object
+              description: Granular run-outcome breakdown for the window
+              required:
+                [
+                  providerCited,
+                  searchNoCitations,
+                  extractionFailed,
+                  toolRejected,
+                  answerOnly,
+                  legacySearch,
+                ]
+              properties:
+                providerCited: { type: integer }
+                searchNoCitations: { type: integer }
+                extractionFailed: { type: integer }
+                toolRejected: { type: integer }
+                answerOnly: { type: integer }
+                legacySearch: { type: integer }
+        citations:
+          type: object
+          required: [total, verified, legacy]
+          properties:
+            total: { type: integer }
+            verified: { type: integer }
+            legacy: { type: integer }
+        attempts:
+          type: object
+          required: [total, failed]
+          properties:
+            total: { type: integer }
+            failed: { type: integer }
+    JobModelSnapshot:
+      type: object
+      required: [id, label, provider, supportsSearch]
+      properties:
+        id: { type: string }
+        label: { type: string }
+        provider: { type: string }
+        supportsSearch: { type: boolean }
+    JobModelAttempts:
+      type: object
+      required: [model, total, succeeded, failed]
+      properties:
+        model: { type: string }
+        total: { type: integer }
+        succeeded: { type: integer }
+        failed: { type: integer }
+        lastError: { type: ["string", "null"] }
+    ErrorMessage:
+      type: object
+      properties:
+        error: { type: string }
+      required: [error]
+    CitationDiagnostics:
+      type: object
+      description: Structured citation-extraction diagnostics for a run
+      required: [metadataEvents, invalidUrls, unknownAnnotationTypes, unknownShapes, redirectsResolved, redirectsFailed]
+      properties:
+        extracted: { type: integer }
+        metadataEvents: { type: integer }
+        invalidUrls: { type: integer }
+        unknownAnnotationTypes:
+          type: array
+          items: { type: string }
+        unknownShapes: { type: integer }
+        redirectsResolved: { type: integer }
+        redirectsFailed: { type: integer }
+    CitationQualityModel:
+      type: object
+      required: [model, label, inRegistry, runs, outcomes, citationEligibleRuns, verifiedCitations, zeroCitationEligibleRuns]
+      properties:
+        model: { type: string }
+        label: { type: string }
+        provider: { type: ["string", "null"] }
+        supportsSearch: { type: ["boolean", "null"] }
+        available: { type: boolean }
+        unavailableReason: { type: ["string", "null"] }
+        inRegistry: { type: boolean }
+        runs: { type: integer }
+        outcomes:
+          type: object
+          required: [providerCited, searchNoCitations, extractionFailed, toolRejected, answerOnly, legacySearch, legacy]
+          properties:
+            providerCited: { type: integer }
+            searchNoCitations: { type: integer }
+            extractionFailed: { type: integer }
+            toolRejected: { type: integer }
+            answerOnly: { type: integer }
+            legacySearch: { type: integer }
+            legacy: { type: integer }
+        citationEligibleRuns: { type: integer }
+        verifiedCitations: { type: integer }
+        zeroCitationEligibleRuns: { type: integer }
+        lastRunAt: { type: ["string", "null"], format: date-time }
+    CitationQualityReport:
+      type: object
+      required: [days, windowStartUtc, models]
+      properties:
+        days: { type: integer }
+        windowStartUtc: { type: string, format: date-time }
+        models:
+          type: array
+          items:
+            $ref: "#/components/schemas/CitationQualityModel"
+    ModelAuditResult:
+      type: object
+      required: [model, provider, label, supportsSearch, extraction, outcome, answerChars, citationCount, sampleDomains, urlsChecked, urlsOk]
+      properties:
+        model: { type: string }
+        provider: { type: string }
+        label: { type: string }
+        supportsSearch: { type: boolean }
+        extraction: { type: string }
+        outcome: { type: string, enum: [completed, failed, unavailable] }
+        unavailableReason: { type: ["string", "null"] }
+        searchStatus: { type: ["string", "null"] }
+        citationEligible: { type: ["boolean", "null"] }
+        answerChars: { type: integer }
+        citationCount: { type: integer }
+        sampleDomains:
+          type: array
+          items: { type: string }
+        urlsChecked: { type: integer }
+        urlsOk: { type: integer }
+        diagnostics:
+          oneOf:
+            - $ref: "#/components/schemas/CitationDiagnostics"
+            - type: "null"
+        durationMs: { type: ["integer", "null"] }
+        error: { type: ["string", "null"] }
+    ContractAuditReport:
+      type: object
+      required: [id, status, prompt, startedAt, totalModels, completedModels, results]
+      properties:
+        id: { type: integer }
+        status: { type: string, enum: [running, completed, failed] }
+        prompt: { type: string }
+        startedAt: { type: string, format: date-time }
+        finishedAt: { type: ["string", "null"], format: date-time }
+        totalModels: { type: integer }
+        completedModels: { type: integer }
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModelAuditResult"
+        error: { type: ["string", "null"] }
+    OverviewSummary:
+      type: object
       required:
-        - status
-
+        [
+          brandName,
+          days,
+          totalPrompts,
+          totalRuns,
+          totalRetrievals,
+          visibilityPct,
+          visibilityDelta,
+          avgPosition,
+          mentionRatePct,
+          mentionRateDelta,
+          lastRunAt,
+        ]
+      properties:
+        brandName: { type: string }
+        days: { type: integer }
+        totalPrompts: { type: integer }
+        totalRuns: { type: integer }
+        totalRetrievals: { type: integer }
+        visibilityPct: { type: number }
+        visibilityDelta: { type: number }
+        avgPosition: { type: ["number", "null"] }
+        mentionRatePct: { type: number }
+        mentionRateDelta: { type: number }
+        lastRunAt: { type: ["string", "null"] }
+    SimulateAllBody:
+      type: object
+      properties:
+        companyId: { type: integer }
+      required: [companyId]
+    TrackingJob:
+      type: object
+      properties:
+        id: { type: integer }
+        companyId: { type: integer }
+        promptId: { type: ["integer", "null"] }
+        models:
+          type: ["array", "null"]
+          items:
+            $ref: "#/components/schemas/JobModelSnapshot"
+        runDate: { type: string }
+        trigger: { type: string, enum: [manual, scheduled] }
+        status: { type: string, enum: [running, completed, failed] }
+        totalSimulations: { type: integer }
+        succeeded: { type: integer }
+        failed: { type: integer }
+        error: { type: ["string", "null"] }
+        createdAt: { type: string }
+        finishedAt: { type: ["string", "null"] }
+      required:
+        [id, companyId, runDate, trigger, status, totalSimulations, succeeded, failed, createdAt]
+    ProgressPoint:
+      type: object
+      properties:
+        date: { type: string }
+        runs: { type: integer }
+        retrievals: { type: integer }
+        visibilityPct: { type: ["number", "null"] }
+        avgBrandPosition: { type: ["number", "null"] }
+        ownedCitations: { type: integer }
+        competitorCitations: { type: integer }
+        corporateCitations: { type: integer }
+        directoryCitations: { type: integer }
+        comparisonCitations: { type: integer }
+        ugcCitations: { type: integer }
+        editorialCitations: { type: integer }
+        institutionalCitations: { type: integer }
+        otherCitations: { type: integer }
+      required:
+        [date, runs, retrievals, visibilityPct, avgBrandPosition, ownedCitations, competitorCitations, corporateCitations, directoryCitations, comparisonCitations, ugcCitations, editorialCitations, institutionalCitations, otherCitations]
+    ProgressEvent:
+      type: object
+      properties:
+        date: { type: string }
+        title: { type: string }
+        category: { type: string, enum: [on_page, off_page] }
+        status: { type: string }
+      required: [date, title, category, status]
+    ProgressMeasurement:
+      type: object
+      properties:
+        weekOf: { type: string }
+        shareOfVoicePct: { type: ["number", "null"] }
+        brandMentions: { type: integer }
+        competitorMentionsAvg: { type: ["number", "null"] }
+        consensusAnswer: { type: ["boolean", "null"] }
+        topPageType: { type: ["string", "null"] }
+      required: [weekOf, shareOfVoicePct, brandMentions, competitorMentionsAvg, consensusAnswer, topPageType]
+    ProgressSummary:
+      type: object
+      properties:
+        visibilityPct: { type: ["number", "null"] }
+        visibilityDelta: { type: ["number", "null"] }
+        totalRuns: { type: integer }
+        totalRetrievals: { type: integer }
+        avgCitationsPerRun: { type: ["number", "null"] }
+        avgBrandPosition: { type: ["number", "null"] }
+        actionsLive: { type: integer }
+        actionsInProgress: { type: integer }
+        lastTrackedAt: { type: ["string", "null"] }
+      required:
+        [visibilityPct, visibilityDelta, totalRuns, totalRetrievals, avgCitationsPerRun, avgBrandPosition, actionsLive, actionsInProgress, lastTrackedAt]
+    ProgressResponse:
+      type: object
+      properties:
+        summary:
+          $ref: "#/components/schemas/ProgressSummary"
+        series:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProgressPoint"
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProgressEvent"
+        measurements:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProgressMeasurement"
+      required: [summary, series, events, measurements]
+    CaseStudyRecord:
+      type: object
+      properties:
+        id: { type: integer }
+        companyId: { type: integer }
+        startingPosition: { type: ["string", "null"] }
+        strategicFocus: { type: ["string", "null"] }
+        contextNotes: { type: ["string", "null"] }
+        contextUpdatedAt: { type: ["string", "null"] }
+        createdAt: { type: string }
+      required:
+        [id, companyId, startingPosition, strategicFocus, contextNotes, contextUpdatedAt, createdAt]
+    CaseStudyContextInput:
+      type: object
+      properties:
+        companyId: { type: integer }
+        startingPosition: { type: ["string", "null"], maxLength: 4000 }
+        strategicFocus: { type: ["string", "null"], maxLength: 4000 }
+        contextNotes: { type: ["string", "null"], maxLength: 4000 }
+      required: [companyId]
+    CaseStudyMetricWindow:
+      type: object
+      properties:
+        start: { type: string }
+        end: { type: string }
+        runs: { type: integer }
+        visibilityPct: { type: ["number", "null"] }
+        avgBrandPosition: { type: ["number", "null"] }
+        verifiedCitations: { type: integer }
+        ownedCitations: { type: integer }
+      required:
+        [start, end, runs, visibilityPct, avgBrandPosition, verifiedCitations, ownedCitations]
+    CaseStudyEvidenceSummary:
+      type: object
+      properties:
+        totalRuns: { type: integer }
+        activePrompts: { type: integer }
+        firstRunAt: { type: ["string", "null"] }
+        lastRunAt: { type: ["string", "null"] }
+        earliest:
+          oneOf:
+            - $ref: "#/components/schemas/CaseStudyMetricWindow"
+            - type: "null"
+        latest:
+          oneOf:
+            - $ref: "#/components/schemas/CaseStudyMetricWindow"
+            - type: "null"
+        actionsLive: { type: integer }
+        actionsInProgress: { type: integer }
+        measurementCount: { type: integer }
+        gaps:
+          type: array
+          items: { type: string }
+      required:
+        [totalRuns, activePrompts, firstRunAt, lastRunAt, earliest, latest, actionsLive, actionsInProgress, measurementCount, gaps]
+    CaseStudyRevision:
+      type: object
+      properties:
+        id: { type: integer }
+        caseStudyId: { type: integer }
+        companyId: { type: integer }
+        revisionNumber: { type: integer }
+        kind: { type: string, enum: [baseline, refresh] }
+        narrative: { type: string }
+        editedNarrative: { type: ["string", "null"] }
+        approvedAt: { type: ["string", "null"] }
+        periodStart: { type: ["string", "null"] }
+        periodEnd: { type: ["string", "null"] }
+        model: { type: ["string", "null"] }
+        createdAt: { type: string }
+        evidence:
+          $ref: "#/components/schemas/CaseStudyEvidenceSummary"
+      required:
+        [id, caseStudyId, companyId, revisionNumber, kind, narrative, editedNarrative, approvedAt, periodStart, periodEnd, model, createdAt, evidence]
+    CaseStudyRefreshInput:
+      type: object
+      properties:
+        companyId: { type: integer }
+      required: [companyId]
+    CaseStudyRevisionUpdate:
+      type: object
+      properties:
+        companyId: { type: integer }
+        editedNarrative: { type: ["string", "null"], maxLength: 20000 }
+        approved: { type: boolean }
+      required: [companyId]
+    CaseStudyJob:
+      type: object
+      properties:
+        id: { type: integer }
+        companyId: { type: integer }
+        status: { type: string, enum: [running, completed, failed] }
+        stage: { type: string }
+        error: { type: ["string", "null"] }
+        revisionId: { type: ["integer", "null"] }
+        createdAt: { type: string }
+        finishedAt: { type: ["string", "null"] }
+      required:
+        [id, companyId, status, stage, error, revisionId, createdAt, finishedAt]
+    CaseStudyNewActivity:
+      type: object
+      properties:
+        runs: { type: integer }
+        actions: { type: integer }
+        measurements: { type: integer }
+      required: [runs, actions, measurements]
+    CaseStudyOverview:
+      type: object
+      properties:
+        caseStudy:
+          $ref: "#/components/schemas/CaseStudyRecord"
+        revisions:
+          type: array
+          items:
+            $ref: "#/components/schemas/CaseStudyRevision"
+        activeJob:
+          oneOf:
+            - $ref: "#/components/schemas/CaseStudyJob"
+            - type: "null"
+        lastJob:
+          oneOf:
+            - $ref: "#/components/schemas/CaseStudyJob"
+            - type: "null"
+        newActivity:
+          oneOf:
+            - $ref: "#/components/schemas/CaseStudyNewActivity"
+            - type: "null"
+        generationAvailable: { type: boolean }
+      required:
+        [caseStudy, revisions, activeJob, lastJob, newActivity, generationAvailable]
+    TimeseriesPoint:
+      type: object
+      required: [date, runs, retrievals, visibilityPct]
+      properties:
+        date: { type: string }
+        runs: { type: integer }
+        retrievals: { type: integer }
+        visibilityPct: { type: number }
+    Prompt:
+      type: object
+      required: [id, text, topic, tags, models, active, createdAt, runCount, lastVisibilityPct, moneyTopicId, moneyTopicName]
+      properties:
+        id: { type: integer }
+        text: { type: string }
+        topic: { type: string }
+        moneyTopicId: { type: ["integer", "null"] }
+        moneyTopicName: { type: ["string", "null"] }
+        tags:
+          type: array
+          items: { type: string }
+        models:
+          type: array
+          items: { type: string }
+        active: { type: boolean }
+        createdAt: { type: string }
+        runCount: { type: integer }
+        lastVisibilityPct: { type: ["number", "null"] }
+        lastRunAt: { type: ["string", "null"] }
+    PromptDetail:
+      allOf:
+        - $ref: "#/components/schemas/Prompt"
+        - type: object
+          required: [recentRuns]
+          properties:
+            recentRuns:
+              type: array
+              items:
+                $ref: "#/components/schemas/PromptRun"
+    PromptInput:
+      type: object
+      required: [companyId, text, topic]
+      properties:
+        companyId: { type: integer }
+        text: { type: string, minLength: 3 }
+        topic: { type: string, minLength: 1 }
+        moneyTopicId: { type: ["integer", "null"] }
+        tags:
+          type: array
+          items: { type: string }
+        models:
+          type: array
+          items: { type: string }
+    PromptUpdate:
+      type: object
+      properties:
+        text: { type: string, minLength: 3 }
+        topic: { type: string, minLength: 1 }
+        moneyTopicId: { type: ["integer", "null"] }
+        tags:
+          type: array
+          items: { type: string }
+        models:
+          type: array
+          items: { type: string }
+        active: { type: boolean }
+    SimulationRequest:
+      type: object
+      properties:
+        model: { type: string }
+    PromptRun:
+      type: object
+      required: [id, promptId, promptText, model, brandMentioned, createdAt, citationCount]
+      properties:
+        id: { type: integer }
+        promptId: { type: integer }
+        promptText: { type: string }
+        model: { type: string }
+        brandMentioned: { type: boolean }
+        brandPosition: { type: ["integer", "null"] }
+        createdAt: { type: string }
+        citationCount: { type: integer }
+        answerPreview: { type: ["string", "null"] }
+        searchStatus:
+          type: ["string", "null"]
+          enum:
+            [
+              provider_cited,
+              search_no_citations,
+              extraction_failed,
+              provider_search,
+              unsupported,
+              tool_rejected,
+              null,
+            ]
+          description: "provider_cited = search + verified citations; search_no_citations = search performed, provider returned no citation metadata; extraction_failed = metadata present but unverifiable; provider_search = legacy search label (pre-outcome-model); null = legacy run (search behavior unknown)"
+        citationEligible: { type: ["boolean", "null"] }
+    PromptRunDetail:
+      allOf:
+        - $ref: "#/components/schemas/PromptRun"
+        - type: object
+          required: [answerText, citations, citationDiagnostics]
+          properties:
+            answerText: { type: string }
+            citations:
+              type: array
+              items:
+                $ref: "#/components/schemas/Citation"
+            citationDiagnostics:
+              description: "Stored citation-extraction diagnostics for this run; null for legacy runs that predate diagnostics capture"
+              oneOf:
+                - $ref: "#/components/schemas/CitationDiagnostics"
+                - type: "null"
+    PromptInsights:
+      type: object
+      required: [companyId, summary, series, sourceTypes, sources, mentionedEntities, entityExtraction, modelCoverage]
+      properties:
+        companyId: { type: integer }
+        summary:
+          $ref: "#/components/schemas/PromptInsightsSummary"
+        modelCoverage:
+          type: array
+          items:
+            $ref: "#/components/schemas/PromptModelCoverage"
+        series:
+          type: array
+          items:
+            $ref: "#/components/schemas/PromptInsightsDay"
+        sourceTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/PromptSourceType"
+        sources:
+          type: array
+          items:
+            $ref: "#/components/schemas/PromptSource"
+        mentionedEntities:
+          type: array
+          description: "Named companies, organisations, products, and services explicitly extracted from saved model answers. Every name is grounded to a verbatim answer excerpt."
+          items:
+            $ref: "#/components/schemas/PromptMentionedEntity"
+        entityExtraction:
+          $ref: "#/components/schemas/PromptEntityExtractionSummary"
+    PromptInsightsSummary:
+      type: object
+      required:
+        [
+          visibilityPct,
+          visibilityDelta,
+          totalRuns,
+          totalRetrievals,
+          citationEligibleRuns,
+          avgCitationsPerRun,
+          avgBrandPosition,
+          lastRunAt,
+        ]
+      properties:
+        visibilityPct: { type: ["number", "null"] }
+        visibilityDelta: { type: ["number", "null"] }
+        totalRuns: { type: integer }
+        totalRetrievals: { type: integer }
+        citationEligibleRuns: { type: integer }
+        avgCitationsPerRun: { type: ["number", "null"] }
+        avgBrandPosition: { type: ["number", "null"] }
+        lastRunAt: { type: ["string", "null"] }
+    PromptModelCoverage:
+      type: object
+      required: [model, runs, mentions, mentionRatePct, citations, citationEligibleRuns, failedAttempts, lastRunAt, sources]
+      properties:
+        model: { type: string }
+        runs: { type: integer }
+        mentions: { type: integer }
+        mentionRatePct: { type: ["number", "null"] }
+        citations: { type: integer }
+        citationEligibleRuns: { type: integer }
+        failedAttempts: { type: integer }
+        lastRunAt: { type: ["string", "null"] }
+        sources:
+          type: array
+          description: "Verified provider-provenance citation sources for this model, ranked by retrieval count. Associated-answer mention metrics describe the answers that used the source, not the cited page."
+          items:
+            $ref: "#/components/schemas/PromptModelCitationSource"
+    PromptModelCitationSource:
+      type: object
+      required: [domain, domainType, topUrl, retrievals, sharePct, avgPosition, associatedAnswers, businessMentionedAnswers, businessMentionRatePct]
+      properties:
+        domain: { type: string }
+        domainType: { type: string }
+        topUrl: { type: ["string", "null"] }
+        retrievals: { type: integer }
+        sharePct: { type: number }
+        avgPosition: { type: number }
+        associatedAnswers: { type: integer }
+        businessMentionedAnswers: { type: integer }
+        businessMentionRatePct: { type: number }
+    PromptInsightsDay:
+      type: object
+      required:
+        [
+          date,
+          runs,
+          retrievals,
+          visibilityPct,
+          avgBrandPosition,
+          ownedCitations,
+          competitorCitations,
+          corporateCitations,
+          directoryCitations,
+          comparisonCitations,
+          ugcCitations,
+          editorialCitations,
+          institutionalCitations,
+          otherCitations,
+        ]
+      properties:
+        date: { type: string }
+        runs: { type: integer }
+        retrievals: { type: integer }
+        visibilityPct: { type: ["number", "null"] }
+        avgBrandPosition: { type: ["number", "null"] }
+        ownedCitations: { type: integer }
+        competitorCitations: { type: integer }
+        corporateCitations: { type: integer }
+        directoryCitations: { type: integer }
+        comparisonCitations: { type: integer }
+        ugcCitations: { type: integer }
+        editorialCitations: { type: integer }
+        institutionalCitations: { type: integer }
+        otherCitations: { type: integer }
+    PromptSourceType:
+      type: object
+      required: [type, retrievals, pct]
+      properties:
+        type:
+          type: string
+          enum: [owned, competitor, corporate, directory, comparison, ugc, editorial, institutional, other]
+        retrievals: { type: integer }
+        pct: { type: number }
+    PromptSource:
+      type: object
+      required: [domain, domainType, retrievals, avgPosition, lastSeenAt, topUrl]
+      properties:
+        domain: { type: string }
+        domainType: { type: string }
+        retrievals: { type: integer }
+        avgPosition: { type: ["number", "null"] }
+        lastSeenAt: { type: string }
+        topUrl: { type: ["string", "null"] }
+    PromptMentionedEntity:
+      type: object
+      required:
+        [
+          name,
+          appearances,
+          shareOfAnalyzedAnswersPct,
+          models,
+          lastSeenAt,
+          evidenceRunId,
+          evidenceExcerpt,
+          observedReason,
+          strategyCategory,
+          strategyRationale,
+        ]
+      properties:
+        name:
+          type: string
+          description: "Exact entity name matched in the saved answer text."
+        appearances:
+          type: integer
+          description: "Distinct analyzed answers in which this organisation was explicitly named."
+        shareOfAnalyzedAnswersPct: { type: number }
+        models:
+          type: array
+          items: { type: string }
+        lastSeenAt: { type: string }
+        evidenceRunId: { type: integer }
+        evidenceExcerpt:
+          type: string
+          description: "Verbatim excerpt generated deterministically from the saved answer around the matched name."
+        observedReason:
+          type: string
+          description: "Bounded extraction summary based only on the answer wording; shown alongside the verbatim excerpt."
+        strategyCategory:
+          type: ["string", "null"]
+          enum: [on_page, off_page, null]
+        strategyRationale:
+          type: string
+          description: "Qualified planning note based on repeated observed mentions; does not infer source linkage or causality."
+    PromptEntityExtractionSummary:
+      type: object
+      required: [totalAnswers, analyzedAnswers, pendingAnswers, failedAnswers, isComplete]
+      properties:
+        totalAnswers: { type: integer }
+        analyzedAnswers: { type: integer }
+        pendingAnswers: { type: integer }
+        failedAnswers: { type: integer }
+        isComplete: { type: boolean }
+    Citation:
+      type: object
+      required: [id, domain, domainType, position]
+      properties:
+        id: { type: integer }
+        domain: { type: string }
+        url: { type: ["string", "null"] }
+        domainType: { type: string }
+        position: { type: integer }
+        provenance: { type: ["string", "null"], description: "'provider' = verified provider-returned metadata; null = legacy (provenance unknown)" }
+    DomainStat:
+      type: object
+      required: [id, domain, domainType, retrievals, deltaPct, isOwned]
+      properties:
+        id: { type: integer }
+        domain: { type: string }
+        domainType: { type: string }
+        retrievals: { type: integer }
+        deltaPct: { type: number }
+        isOwned: { type: boolean }
+        firstSeenAt: { type: ["string", "null"] }
+    DomainTypeDistribution:
+      type: object
+      required: [totalRetrievals, types]
+      properties:
+        totalRetrievals: { type: integer }
+        types:
+          type: array
+          items:
+            $ref: "#/components/schemas/DomainTypeShare"
+    DomainTypeShare:
+      type: object
+      required: [domainType, retrievals, sharePct]
+      properties:
+        domainType: { type: string }
+        retrievals: { type: integer }
+        sharePct: { type: number }
+    UrlStat:
+      type: object
+      required: [id, url, domain, domainType, retrievals]
+      properties:
+        id: { type: integer }
+        url: { type: string }
+        domain: { type: string }
+        domainType: { type: string }
+        retrievals: { type: integer }
+        lastSeenAt: { type: ["string", "null"] }
+    Signal:
+      type: object
+      required: [id, name, category, description, weight, status, guidance]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        category: { type: string }
+        description: { type: string }
+        weight: { type: integer }
+        status: { type: string }
+        recommendation: { type: ["string", "null"] }
+        guidance:
+          anyOf:
+            - $ref: "#/components/schemas/ActionRecommendation"
+            - type: "null"
+        evidence:
+          anyOf:
+            - $ref: "#/components/schemas/ActionEvidence"
+            - type: "null"
+    ActionRecommendation:
+      type: object
+      description: >-
+        Separates the general AEO principle from company-specific prioritisation.
+        Verified research is used only when an exact supported Gap finding exists;
+        company context is explicitly not presented as outcome evidence.
+      required:
+        [
+          basis,
+          evidenceLevel,
+          generalPrinciple,
+          companyRationale,
+          nextStep,
+          basedOn,
+          findingId,
+          promptIds,
+        ]
+      properties:
+        basis:
+          type: string
+          enum:
+            [
+              verified_research,
+              research_refresh_needed,
+              company_context,
+              general_strategy,
+            ]
+        evidenceLevel:
+          type: string
+          enum:
+            [
+              verified_observation,
+              historical_observation,
+              established_practice,
+              conditional_practice,
+              experimental,
+            ]
+        generalPrinciple: { type: string }
+        companyRationale: { type: ["string", "null"] }
+        nextStep: { type: string }
+        basedOn:
+          type: array
+          items: { type: string }
+        findingId: { type: ["integer", "null"] }
+        promptIds:
+          type: array
+          items: { type: integer }
+    ActionEvidence:
+      type: object
+      description: >-
+        Optional grounding for an action: a company observed surfacing well
+        with AI agents, the observed mechanism, and the supporting source.
+        Absent for original/visionary actions with no precedent.
+      required: [company, evidenceType, observation, confidence]
+      properties:
+        company: { type: string }
+        evidenceType:
+          type: string
+          enum:
+            [
+              editorial,
+              ugc,
+              original_statistics,
+              faq_structure,
+              documentation,
+              review_listicle,
+              competitor_owned,
+              reference,
+              brand_owned,
+              other,
+            ]
+        observation: { type: string }
+        rationale: { type: ["string", "null"] }
+        sourceTitle: { type: ["string", "null"] }
+        sourceUrl: { type: ["string", "null"] }
+        observedAt: { type: ["string", "null"] }
+        confidence: { type: string, enum: [observed, curated, hypothesis] }
+    SiteTest:
+      type: object
+      required: [id, companyId, name, url, createdAt, snapshotCount, latestScore]
+      properties:
+        id: { type: integer }
+        companyId: { type: integer }
+        name: { type: string }
+        url: { type: string }
+        createdAt: { type: string }
+        snapshotCount: { type: integer }
+        latestScore: { type: ["integer", "null"] }
+        latestSnapshotAt: { type: ["string", "null"] }
+    SiteTestInput:
+      type: object
+      required: [companyId, name, url]
+      properties:
+        companyId: { type: integer }
+        name: { type: string, minLength: 1 }
+        url: { type: string, minLength: 4 }
+    SiteTestDetail:
+      allOf:
+        - $ref: "#/components/schemas/SiteTest"
+        - type: object
+          required: [snapshots]
+          properties:
+            snapshots:
+              type: array
+              items:
+                $ref: "#/components/schemas/SiteSnapshot"
+    SiteSnapshot:
+      type: object
+      required: [id, siteTestId, score, createdAt, checks]
+      properties:
+        id: { type: integer }
+        siteTestId: { type: integer }
+        score: { type: integer }
+        createdAt: { type: string }
+        httpStatus: { type: ["integer", "null"] }
+        checks:
+          type: array
+          items:
+            $ref: "#/components/schemas/SiteCheck"
+    SiteCheck:
+      type: object
+      required: [key, label, passed, detail]
+      properties:
+        key: { type: string }
+        label: { type: string }
+        passed: { type: boolean }
+        detail: { type: string }
+    Insight:
+      type: object
+      properties:
+        id: { type: string }
+        kind: { type: string }
+        severity:
+          type: string
+          enum: [good, info, warning]
+        title: { type: string }
+        detail: { type: string }
+        observation: { type: string }
+        action: { type: string, nullable: true }
+        whyItMayWork: { type: string, nullable: true }
+        caveat: { type: string }
+        confidence:
+          type: string
+          enum: [insufficient, weak, moderate, strong]
+        sampleSize: { type: integer }
+        evidenceLabel: { type: string }
+        metricLabel: { type: string, nullable: true }
+        metricValue: { type: string, nullable: true }
+        href: { type: string, nullable: true }
+      required: [id, kind, severity, title, detail, observation, caveat, confidence, sampleSize, evidenceLabel]
+    PerceptionExcerpt:
+      type: object
+      properties:
+        runId: { type: integer }
+        promptId: { type: integer }
+        promptText: { type: string }
+        excerpt: { type: string }
+        position: { type: integer, nullable: true }
+        createdAt: { type: string }
+      required: [runId, promptId, promptText, excerpt, createdAt]
+    PerceptionModel:
+      type: object
+      properties:
+        model: { type: string }
+        runCount: { type: integer }
+        mentionCount: { type: integer }
+        mentionRatePct: { type: number }
+        excerpts:
+          type: array
+          items:
+            $ref: "#/components/schemas/PerceptionExcerpt"
+      required: [model, runCount, mentionCount, mentionRatePct, excerpts]
+    GapPrompt:
+      type: object
+      properties:
+        promptId: { type: integer }
+        text: { type: string }
+        topic: { type: string }
+        runCount: { type: integer }
+        mentionCount: { type: integer }
+        topDomains:
+          type: array
+          items: { type: string }
+      required: [promptId, text, topic, runCount, mentionCount, topDomains]
+    CompetitorShare:
+      type: object
+      properties:
+        domain: { type: string }
+        domainType: { type: string }
+        isYou: { type: boolean }
+        retrievals: { type: integer }
+        sharePct: { type: number }
+      required: [domain, domainType, isYou, retrievals, sharePct]
+    GapAnalysis:
+      type: object
+      properties:
+        promptGaps:
+          type: array
+          items:
+            $ref: "#/components/schemas/GapPrompt"
+        competitorShare:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompetitorShare"
+        totalRetrievals: { type: integer }
+      required: [promptGaps, competitorShare, totalRetrievals]
+    StartGapResearchInput:
+      type: object
+      required: [companyId]
+      properties:
+        companyId: { type: integer }
+        windowDays: { type: integer, minimum: 7, maximum: 90 }
+    GapResearchJob:
+      type: object
+      required:
+        [
+          id,
+          companyId,
+          status,
+          phase,
+          windowDays,
+          analysisVersion,
+          eligibleRunCount,
+          ineligibleRunCount,
+          gapPromptCount,
+          totalSources,
+          fetchedSources,
+          failedSources,
+          cachedSources,
+          createdAt,
+        ]
+      properties:
+        id: { type: integer }
+        companyId: { type: integer }
+        status: { type: string, enum: [running, completed, failed] }
+        phase: { type: string, enum: [collecting, fetching, analyzing, done] }
+        windowDays: { type: integer }
+        analysisVersion: { type: integer }
+        eligibleRunCount: { type: integer }
+        ineligibleRunCount: { type: integer }
+        gapPromptCount: { type: integer }
+        totalSources: { type: integer }
+        fetchedSources: { type: integer }
+        failedSources: { type: integer }
+        cachedSources: { type: integer }
+        error: { type: ["string", "null"] }
+        createdAt: { type: string }
+        finishedAt: { type: ["string", "null"] }
+    GapSourceInfo:
+      type: object
+      required: [fetchStatus, fetchedAt]
+      properties:
+        fetchStatus:
+          type: string
+          enum: [ok, http_error, timeout, blocked, unreachable]
+        httpStatus: { type: ["integer", "null"] }
+        title: { type: ["string", "null"] }
+        snippet: { type: ["string", "null"] }
+        signals:
+          type: ["object", "null"]
+          additionalProperties: { type: boolean }
+        fetchedAt: { type: string }
+    GapEvidenceItem:
+      type: object
+      required:
+        [
+          id,
+          canonicalUrl,
+          domain,
+          channel,
+          isCompetitor,
+          citationCount,
+          runCount,
+          models,
+          runIds,
+        ]
+      properties:
+        id: { type: integer }
+        canonicalUrl: { type: string }
+        domain: { type: string }
+        channel:
+          type: string
+          enum:
+            [
+              competitor_owned,
+              editorial,
+              ugc,
+              review_listicle,
+              reference,
+              brand_owned,
+              other,
+            ]
+        isCompetitor: { type: boolean }
+        citationCount: { type: integer }
+        runCount: { type: integer }
+        avgPosition: { type: ["number", "null"] }
+        bestPosition: { type: ["integer", "null"] }
+        models:
+          type: array
+          items: { type: string }
+        runIds:
+          type: array
+          items: { type: integer }
+        answerContext: { type: ["string", "null"] }
+        lastSeenAt: { type: ["string", "null"] }
+        page:
+          oneOf:
+            - $ref: "#/components/schemas/GapSourceInfo"
+            - type: "null"
+    GapModelCoverage:
+      type: object
+      required: [model, runs, mentioned, citationsEligible]
+      properties:
+        model: { type: string }
+        runs: { type: integer }
+        mentioned: { type: integer }
+        citationsEligible: { type: boolean }
+    GapCompetitorSurfaced:
+      type: object
+      required: [domain, name, runsSurfaced]
+      properties:
+        domain: { type: string }
+        name: { type: string }
+        runsSurfaced: { type: integer }
+    GapRecommendation:
+      type: object
+      required: [status, evidenceUrls]
+      properties:
+        status: { type: string, enum: [proposed, insufficient] }
+        category: { type: ["string", "null"], enum: [on_page, off_page, null] }
+        playType: { type: ["string", "null"] }
+        suggestedIdeaTitle:
+          type: ["string", "null"]
+          description: Exact compatible Ideas-library title, or null when no safe mapping exists.
+        title: { type: ["string", "null"] }
+        rationale: { type: ["string", "null"] }
+        evidenceUrls:
+          type: array
+          items: { type: string }
+    GapFindingPromotion:
+      type: object
+      required: [strategyItemId, createdAt]
+      properties:
+        strategyItemId: { type: integer }
+        createdAt: { type: string }
+    GapResearchFinding:
+      type: object
+      required:
+        [
+          id,
+          promptId,
+          promptText,
+          topic,
+          gapType,
+          runCount,
+          eligibleRunCount,
+          mentionCount,
+          citationCount,
+          modelCoverage,
+          competitors,
+          recommendation,
+          evidence,
+        ]
+      properties:
+        id: { type: integer }
+        promptId: { type: integer }
+        promptText: { type: string }
+        topic: { type: string }
+        gapType: { type: string, enum: [full, partial] }
+        runCount: { type: integer }
+        eligibleRunCount: { type: integer }
+        mentionCount: { type: integer }
+        citationCount: { type: integer }
+        modelCoverage:
+          type: array
+          items:
+            $ref: "#/components/schemas/GapModelCoverage"
+        competitors:
+          type: array
+          items:
+            $ref: "#/components/schemas/GapCompetitorSurfaced"
+        recommendation:
+          $ref: "#/components/schemas/GapRecommendation"
+        lastRunAt: { type: ["string", "null"] }
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/GapEvidenceItem"
+        promotion:
+          oneOf:
+            - $ref: "#/components/schemas/GapFindingPromotion"
+            - type: "null"
+    GapTrendEvidence:
+      type: object
+      required: [url, domain, channel, citations]
+      properties:
+        url: { type: string }
+        domain: { type: string }
+        channel: { type: string }
+        citations: { type: integer }
+    GapResearchTrend:
+      type: object
+      required:
+        [id, kind, title, observation, confidence, sampleSize, promptIds, evidence]
+      properties:
+        id: { type: integer }
+        kind:
+          type: string
+          enum: [domain_dominance, channel_pattern, competitor_presence]
+        title: { type: string }
+        observation: { type: string }
+        hypothesis: { type: ["string", "null"] }
+        contradictoryEvidence: { type: ["string", "null"] }
+        confidence:
+          type: string
+          enum: [insufficient, weak, moderate, strong]
+        sampleSize: { type: integer }
+        promptIds:
+          type: array
+          items: { type: integer }
+        domain: { type: ["string", "null"] }
+        channel: { type: ["string", "null"] }
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/GapTrendEvidence"
+    GapResearchSnapshot:
+      type: object
+      required: [job, findings, trends]
+      properties:
+        job:
+          $ref: "#/components/schemas/GapResearchJob"
+        findings:
+          type: array
+          items:
+            $ref: "#/components/schemas/GapResearchFinding"
+        trends:
+          type: array
+          items:
+            $ref: "#/components/schemas/GapResearchTrend"
+    GapResearchReport:
+      type: object
+      required: []
+      properties:
+        latestJob:
+          oneOf:
+            - $ref: "#/components/schemas/GapResearchJob"
+            - type: "null"
+        snapshot:
+          oneOf:
+            - $ref: "#/components/schemas/GapResearchSnapshot"
+            - type: "null"
+    PromoteGapFindingInput:
+      type: object
+      required: [companyId, ideaId, category]
+      properties:
+        companyId: { type: integer }
+        ideaId: { type: integer }
+        category: { type: string, enum: [on_page, off_page] }
+        moneyTopic: { type: ["string", "null"] }
+        moneyTopicId: { type: ["integer", "null"] }
+        notes: { type: ["string", "null"] }
+        brief:
+          anyOf:
+            - $ref: "#/components/schemas/ActionBriefInput"
+            - type: "null"
+        targetDate: { type: ["string", "null"] }
+    PromoteGapFindingResult:
+      type: object
+      required: [strategyItemId, findingId, ideaId, category, createdAt]
+      properties:
+        strategyItemId: { type: integer }
+        findingId: { type: integer }
+        ideaId: { type: integer }
+        category: { type: string }
+        createdAt: { type: string }
+    TopicCoverage:
+      type: object
+      properties:
+        topic: { type: string }
+        promptCount: { type: integer }
+        runCount: { type: integer }
+        mentionCount: { type: integer }
+        mentionRatePct: { type: number, nullable: true }
+      required: [topic, promptCount, runCount, mentionCount]
+    DiscoveryCoverage:
+      type: object
+      properties:
+        totalPrompts: { type: integer }
+        activePrompts: { type: integer }
+        topics:
+          type: array
+          items:
+            $ref: "#/components/schemas/TopicCoverage"
+      required: [totalPrompts, activePrompts, topics]
+    DiscoverySuggestion:
+      type: object
+      properties:
+        id: { type: integer }
+        companyId: { type: integer }
+        text: { type: string }
+        topic: { type: string }
+        rationale: { type: string }
+        status:
+          type: string
+          enum: [pending, added, dismissed]
+        createdPromptId: { type: ["integer", "null"] }
+        createdAt: { type: string }
+      required: [id, companyId, text, topic, rationale, status, createdPromptId, createdAt]
+    WebsiteAssessmentJob:
+      type: object
+      properties:
+        id: { type: integer }
+        companyId: { type: integer }
+        status: { type: string, enum: [running, completed, failed] }
+        source: { type: string, enum: [automatic, manual_rerun] }
+        phase: { type: string, enum: [crawling, researching, analyzing, saving, done] }
+        totalPages: { type: integer }
+        fetchedPages: { type: integer }
+        failedPages: { type: integer }
+        error: { type: ["string", "null"] }
+        createdAt: { type: string }
+        finishedAt: { type: ["string", "null"] }
+      required: [id, companyId, status, source, phase, totalPages, fetchedPages, failedPages, createdAt, finishedAt]
+    WebsiteAssessmentPage:
+      type: object
+      properties:
+        url: { type: string }
+        finalUrl: { type: ["string", "null"] }
+        fetchStatus: { type: string }
+        httpStatus: { type: ["integer", "null"] }
+        title: { type: ["string", "null"] }
+      required: [url, fetchStatus]
+    InferredCompanyProfile:
+      type: object
+      properties:
+        id: { type: integer }
+        jobId: { type: integer }
+        companyId: { type: integer }
+        status: { type: string, enum: [pending, approved, superseded] }
+        targetAudience: { type: ["string", "null"] }
+        industry: { type: ["string", "null"] }
+        objective: { type: ["string", "null"] }
+        productsServices: { type: ["string", "null"] }
+        positioning: { type: ["string", "null"] }
+        geography: { type: ["string", "null"] }
+        evidence:
+          type: array
+          items: { type: string }
+        createdAt: { type: string }
+        approvedAt: { type: ["string", "null"] }
+      required: [id, jobId, companyId, status, evidence, createdAt, approvedAt]
+    WebsiteAssessment:
+      type: object
+      properties:
+        job: { $ref: "#/components/schemas/WebsiteAssessmentJob" }
+        profile:
+          oneOf:
+            - { $ref: "#/components/schemas/InferredCompanyProfile" }
+            - { type: "null" }
+        pages:
+          type: array
+          items: { $ref: "#/components/schemas/WebsiteAssessmentPage" }
+        audit:
+          oneOf:
+            - { $ref: "#/components/schemas/WebsiteAudit" }
+            - { type: "null" }
+        snapshot: { $ref: "#/components/schemas/WebsiteAssessmentSnapshot" }
+      required: [job, profile, pages, audit, snapshot]
+    WebsiteAssessmentSnapshot:
+      type: object
+      properties:
+        currentJobId: { type: integer }
+        profileJobId: { type: ["integer", "null"] }
+        pagesJobId: { type: ["integer", "null"] }
+        auditJobId: { type: ["integer", "null"] }
+        profileIsFromCurrentJob: { type: boolean }
+        pagesAreFromCurrentJob: { type: boolean }
+        auditIsFromCurrentJob: { type: boolean }
+      required: [currentJobId, profileJobId, pagesJobId, auditJobId, profileIsFromCurrentJob, pagesAreFromCurrentJob, auditIsFromCurrentJob]
+    AuditRerunInput:
+      type: object
+      additionalProperties: false
+      properties:
+        reason:
+          type: string
+          maxLength: 200
+    AuditFinding:
+      type: object
+      required: [id, code, category, severity, title, explanation, evidence, pageUrl, recommendation, effort, impact, affectedCount, prevalence, representativeUrls, representativeEvidence, scoreRationale, impactExplanation, confidence, limitations]
+      properties:
+        id: { type: string }
+        code: { type: string }
+        category: { type: string }
+        severity: { type: string, enum: [critical, high, medium, low] }
+        title: { type: string }
+        explanation: { type: string }
+        evidence: { type: string }
+        pageUrl: { type: ["string", "null"] }
+        recommendation: { type: string }
+        effort: { type: string, enum: [low, medium, high] }
+        impact: { type: string, enum: [low, medium, high] }
+        affectedCount: { type: integer, minimum: 0 }
+        prevalence: { type: number, minimum: 0, maximum: 1 }
+        representativeUrls:
+          type: array
+          items: { type: string }
+        representativeEvidence:
+          type: array
+          items: { type: string }
+        scoreRationale: { type: string }
+        impactExplanation: { type: string }
+        confidence: { type: string, enum: [high, medium, low] }
+        limitations:
+          type: array
+          items: { type: string }
+    AuditQuickWin:
+      type: object
+      required: [code, title, recommendation, evidence, pageUrl, findingCodes, effort, impact, family, rationale, affectedCount, representativeUrls, rank]
+      properties:
+        code: { type: string }
+        title: { type: string }
+        recommendation: { type: string }
+        evidence: { type: string }
+        pageUrl: { type: ["string", "null"] }
+        findingCodes:
+          type: array
+          items: { type: string }
+        effort: { type: string, enum: [low, medium, high] }
+        impact: { type: string, enum: [low, medium, high] }
+        family: { type: string }
+        rationale: { type: string }
+        affectedCount: { type: integer, minimum: 0 }
+        representativeUrls:
+          type: array
+          items: { type: string }
+        rank: { type: integer, minimum: 1 }
+    AuditCategoryNarrative:
+      type: object
+      required: [category, score, conclusion, summary, strengths, weaknesses, risks, scoreRationale, impact, evidence, confidence, limitations]
+      properties:
+        category: { type: string }
+        score: { type: integer, minimum: 0, maximum: 100 }
+        conclusion: { type: string }
+        summary: { type: string }
+        strengths:
+          type: array
+          items: { type: string }
+        weaknesses:
+          type: array
+          items: { type: string }
+        risks:
+          type: array
+          items: { type: string }
+        scoreRationale: { type: string }
+        impact: { type: string }
+        evidence:
+          type: array
+          items: { type: string }
+        confidence: { type: string, enum: [high, medium, low] }
+        limitations:
+          type: array
+          items: { type: string }
+    WebsiteAudit:
+      type: object
+      required: [id, jobId, companyId, auditVersion, context, score, categoryScores, categoryNarratives, counts, pagesScanned, methodology, findings, quickWins, generatedAt]
+      properties:
+        id: { type: integer }
+        jobId: { type: integer }
+        companyId: { type: integer }
+        auditVersion: { type: string }
+        context:
+          type: object
+          additionalProperties: { type: string }
+        score: { type: integer, minimum: 0, maximum: 100 }
+        categoryScores:
+          type: object
+          additionalProperties: { type: integer, minimum: 0, maximum: 100 }
+        categoryNarratives:
+          type: object
+          additionalProperties: { $ref: "#/components/schemas/AuditCategoryNarrative" }
+        counts:
+          type: object
+          additionalProperties: { type: integer, minimum: 0 }
+        pagesScanned: { type: integer, minimum: 0 }
+        methodology:
+          type: array
+          items: { type: string }
+        findings:
+          type: array
+          items: { $ref: "#/components/schemas/AuditFinding" }
+        quickWins:
+          type: array
+          items: { $ref: "#/components/schemas/AuditQuickWin" }
+        generatedAt: { type: string, format: date-time }
+    CompanyAudit:
+      type: object
+      required: [job, audit, promotedQuickWinCodes, promotionOutcomes]
+      properties:
+        job: { $ref: "#/components/schemas/WebsiteAssessmentJob" }
+        audit:
+          oneOf:
+            - { $ref: "#/components/schemas/WebsiteAudit" }
+            - { type: "null" }
+        promotedQuickWinCodes:
+          type: array
+          items: { type: string }
+        promotionOutcomes:
+          type: array
+          items: { $ref: "#/components/schemas/AuditImpactOutcome" }
+    ImpactMeasurement:
+      type: object
+      required: [windowStart, windowEnd, eligibleRuns, citedRuns, totalRuns, visibleRuns, models]
+      properties:
+        windowStart: { type: string, format: date-time }
+        windowEnd: { type: string, format: date-time }
+        eligibleRuns: { type: integer, minimum: 0 }
+        citedRuns: { type: integer, minimum: 0 }
+        totalRuns: { type: integer, minimum: 0 }
+        visibleRuns: { type: integer, minimum: 0 }
+        models:
+          type: array
+          items: { type: string }
+    AuditImpactOutcome:
+      type: object
+      required: [quickWinCode, strategyItemId, status, liveAt, baseline, after, citationRateBefore, citationRateAfter, visibilityBefore, visibilityAfter]
+      properties:
+        quickWinCode: { type: string }
+        strategyItemId: { type: integer }
+        status: { type: string, enum: [not_started, in_progress, live] }
+        liveAt: { type: ["string", "null"], format: date-time }
+        baseline: { $ref: "#/components/schemas/ImpactMeasurement" }
+        after:
+          oneOf:
+            - { $ref: "#/components/schemas/ImpactMeasurement" }
+            - { type: "null" }
+        citationRateBefore: { type: ["number", "null"] }
+        citationRateAfter: { type: ["number", "null"] }
+        visibilityBefore: { type: ["number", "null"] }
+        visibilityAfter: { type: ["number", "null"] }
+    AuditQuickWinPromotionInput:
+      type: object
+      additionalProperties: false
+      required: [auditId, quickWinCode]
+      properties:
+        auditId: { type: integer, minimum: 1 }
+        quickWinCode: { type: string, minLength: 1, maxLength: 120 }
+    AuditQuickWinPromotion:
+      type: object
+      required: [auditId, quickWinCode, strategyItemId, ideaId, ideaTitle, category, status, evidence, createdAt]
+      properties:
+        auditId: { type: integer }
+        quickWinCode: { type: string }
+        strategyItemId: { type: integer }
+        ideaId: { type: integer }
+        ideaTitle: { type: string }
+        category: { type: string, enum: [on_page] }
+        status: { type: string }
+        evidence:
+          type: object
+          additionalProperties: true
+        createdAt: { type: string, format: date-time }
+    InferredProfileApproval:
+      type: object
+      properties:
+        profileId: { type: integer }
+        targetAudience: { type: ["string", "null"], maxLength: 500 }
+        industry: { type: ["string", "null"], maxLength: 200 }
+        objective: { type: ["string", "null"], maxLength: 500 }
+        productsServices: { type: ["string", "null"], maxLength: 1000 }
+        positioning: { type: ["string", "null"], maxLength: 1000 }
+        geography: { type: ["string", "null"], maxLength: 300 }
+      required: [profileId]
+    AudienceRecommendation:
+      type: object
+      properties:
+        id: { type: integer }
+        jobId: { type: integer }
+        companyId: { type: integer }
+        question: { type: string }
+        normalizedQuestion: { type: string }
+        moneyTopic: { type: string }
+        persona: { type: string }
+        intent: { type: string }
+        rationale: { type: string }
+        researchEvidence:
+          type: array
+          items:
+            type: object
+            properties:
+              platform: { type: string }
+              title: { type: string }
+              url: { type: string }
+              query: { type: string }
+            required: [platform, title, url, query]
+        status: { type: string, enum: [pending, added, dismissed] }
+        moneyTopicId: { type: ["integer", "null"] }
+        createdPromptId: { type: ["integer", "null"] }
+        createdAt: { type: string }
+        reviewedAt: { type: ["string", "null"] }
+      required: [id, jobId, companyId, question, normalizedQuestion, moneyTopic, persona, intent, rationale, researchEvidence, status, createdAt, reviewedAt]
+    BulkAddRecommendations:
+      type: object
+      properties:
+        recommendationIds:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items: { type: integer }
+      required: [recommendationIds]
+    SystemStatus:
+      type: object
+      properties:
+        simulationConfigured: { type: boolean }
+      required: [simulationConfigured]
+    Company:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        domain: { type: string }
+        industry: { type: ["string", "null"] }
+        objective: { type: ["string", "null"] }
+        targetAudience: { type: ["string", "null"] }
+        productsServices: { type: ["string", "null"] }
+        positioning: { type: ["string", "null"] }
+        geography: { type: ["string", "null"] }
+        notes: { type: ["string", "null"] }
+        profileUpdatedAt: { type: ["string", "null"] }
+        autoTrackDaily: { type: boolean }
+        createdAt: { type: string }
+      required: [id, name, domain, autoTrackDaily, createdAt]
+    CompanyInput:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        domain: { type: string, minLength: 3, maxLength: 253 }
+        industry: { type: ["string", "null"], maxLength: 120 }
+        objective: { type: ["string", "null"], maxLength: 600 }
+        targetAudience: { type: ["string", "null"], maxLength: 600 }
+        productsServices: { type: ["string", "null"], maxLength: 600 }
+        positioning: { type: ["string", "null"], maxLength: 600 }
+        geography: { type: ["string", "null"], maxLength: 300 }
+        notes: { type: ["string", "null"], maxLength: 2000 }
+        autoTrackDaily: { type: boolean }
+      required: [domain]
+    CompanyPatch:
+      type: object
+      description: Partial company profile update — only provided fields change; empty strings clear a field.
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        domain: { type: string, minLength: 3, maxLength: 253 }
+        industry: { type: ["string", "null"], maxLength: 120 }
+        objective: { type: ["string", "null"], maxLength: 600 }
+        targetAudience: { type: ["string", "null"], maxLength: 600 }
+        productsServices: { type: ["string", "null"], maxLength: 600 }
+        positioning: { type: ["string", "null"], maxLength: 600 }
+        geography: { type: ["string", "null"], maxLength: 300 }
+        notes: { type: ["string", "null"], maxLength: 2000 }
+        autoTrackDaily: { type: boolean }
+    CompanySummary:
+      allOf:
+        - $ref: "#/components/schemas/Company"
+        - type: object
+          required: [promptCount, runCount, retrievals, visibilityPct, lastRunAt]
+          properties:
+            promptCount: { type: integer }
+            runCount: { type: integer }
+            retrievals: { type: integer }
+            visibilityPct: { type: ["number", "null"] }
+            lastRunAt: { type: ["string", "null"] }
+    DashboardTotals:
+      type: object
+      properties:
+        companies: { type: integer }
+        prompts: { type: integer }
+        runs: { type: integer }
+        citationEligibleRuns: { type: integer }
+        searchIneligibleRuns: { type: integer }
+        legacyRuns: { type: integer }
+        retrievals:
+          type: integer
+          description: Raw stored citations (includes legacy/unknown-provenance rows)
+        verifiedRetrievals:
+          type: integer
+          description: Provider-returned citations from confirmed citation-eligible runs only
+        uniqueDomains: { type: integer }
+        avgCitationsPerRun: { type: ["number", "null"] }
+        top5ConcentrationPct: { type: ["number", "null"] }
+        overallVisibilityPct: { type: ["number", "null"] }
+      required: [companies, prompts, runs, citationEligibleRuns, searchIneligibleRuns, legacyRuns, retrievals, uniqueDomains]
+    DashboardTopDomain:
+      type: object
+      properties:
+        domain: { type: string }
+        retrievals: { type: integer }
+        companiesCitedFor: { type: integer }
+        domainTypes:
+          type: array
+          items: { type: string }
+        avgPosition: { type: ["number", "null"] }
+        modelCount: { type: integer }
+      required: [domain, retrievals, companiesCitedFor, domainTypes, modelCount]
+    DashboardConcentration:
+      type: object
+      properties:
+        uniqueDomains: { type: integer }
+        avgCitationsPerRun: { type: ["number", "null"] }
+        top5SharePct: { type: ["number", "null"] }
+      required: [uniqueDomains]
+    DashboardQuality:
+      type: object
+      properties:
+        searchCoveragePct: { type: ["number", "null"] }
+        avgBrandPosition: { type: ["number", "null"] }
+        positionedBrandRuns: { type: integer }
+        top3CitationSharePct: { type: ["number", "null"] }
+        positionedCitations: { type: integer }
+      required: [searchCoveragePct, avgBrandPosition, positionedBrandRuns, top3CitationSharePct, positionedCitations]
+    DashboardModelStat:
+      type: object
+      properties:
+        model: { type: string }
+        label: { type: string }
+        provider: { type: ["string", "null"] }
+        supportsSearch: { type: ["boolean", "null"] }
+        runCount: { type: integer }
+        citationEligibleRuns: { type: integer }
+        legacyRuns: { type: integer }
+        mentionRatePct: { type: ["number", "null"] }
+        avgCitations: { type: ["number", "null"] }
+      required: [model, label, runCount, citationEligibleRuns, legacyRuns]
+    DashboardTopicStat:
+      type: object
+      properties:
+        topic: { type: string }
+        promptCount: { type: integer }
+        runCount: { type: integer }
+        mentionRatePct: { type: ["number", "null"] }
+        companies: { type: integer }
+      required: [topic, promptCount, runCount, companies]
+    DashboardModelSourceMixEntry:
+      type: object
+      properties:
+        domainType: { type: string }
+        retrievals: { type: integer }
+        sharePct: { type: number }
+      required: [domainType, retrievals, sharePct]
+    DashboardModelSourceMix:
+      type: object
+      properties:
+        model: { type: string }
+        totalRetrievals: { type: integer }
+        mix:
+          type: array
+          items:
+            $ref: "#/components/schemas/DashboardModelSourceMixEntry"
+      required: [model, totalRetrievals, mix]
+    DashboardTopUrl:
+      type: object
+      properties:
+        url: { type: string }
+        domain: { type: string }
+        retrievals: { type: integer }
+        avgPosition: { type: ["number", "null"] }
+        modelCount: { type: integer }
+      required: [url, domain, retrievals, modelCount]
+    DashboardTrendPoint:
+      type: object
+      properties:
+        date: { type: string }
+        runs: { type: integer }
+        retrievals: { type: integer }
+        mentions: { type: integer }
+        eligibleRuns: { type: integer }
+        visibilityPct: { type: ["number", "null"] }
+        citationsPerEligibleRun: { type: ["number", "null"] }
+        avgBrandPosition: { type: ["number", "null"] }
+      required: [date, runs, retrievals, mentions, eligibleRuns]
+    IndustryDashboard:
+      type: object
+      properties:
+        days: { type: integer }
+        model: { type: ["string", "null"] }
+        windowStartUtc: { type: string }
+        totals:
+          $ref: "#/components/schemas/DashboardTotals"
+        companies:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompanySummary"
+        domainTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/DomainTypeShare"
+        topDomains:
+          type: array
+          items:
+            $ref: "#/components/schemas/DashboardTopDomain"
+        concentration:
+          $ref: "#/components/schemas/DashboardConcentration"
+        quality:
+          $ref: "#/components/schemas/DashboardQuality"
+        modelSourceMix:
+          type: array
+          items:
+            $ref: "#/components/schemas/DashboardModelSourceMix"
+        topUrls:
+          type: array
+          items:
+            $ref: "#/components/schemas/DashboardTopUrl"
+        trend:
+          type: array
+          items:
+            $ref: "#/components/schemas/DashboardTrendPoint"
+        models:
+          type: array
+          items:
+            $ref: "#/components/schemas/DashboardModelStat"
+        topics:
+          type: array
+          items:
+            $ref: "#/components/schemas/DashboardTopicStat"
+      required: [days, totals, companies, domainTypes, topDomains, concentration, quality, modelSourceMix, topUrls, trend, models, topics]
+    ResearchStat:
+      type: object
+      properties:
+        label: { type: string }
+        value: { type: string }
+        detail: { type: string }
+        source: { type: string }
+        sourceUrl: { type: string }
+        asOf: { type: string }
+      required: [label, value, detail, source, sourceUrl, asOf]
+    ResearchCtrImpact:
+      type: object
+      properties:
+        scenario: { type: string }
+        ctrPct: { type: number }
+        source: { type: string }
+        sourceUrl: { type: string }
+      required: [scenario, ctrPct, source, sourceUrl]
+    ResearchCitationsPerResponse:
+      type: object
+      properties:
+        platform: { type: string }
+        avgCitations: { type: number }
+        source: { type: string }
+        sourceUrl: { type: string }
+      required: [platform, avgCitations, source, sourceUrl]
+    ResearchPlatformShare:
+      type: object
+      properties:
+        platform: { type: string }
+        sharePct: { type: number }
+        period: { type: string }
+        source: { type: string }
+        sourceUrl: { type: string }
+      required: [platform, sharePct, period, source, sourceUrl]
+    ResearchSourceTypeShare:
+      type: object
+      properties:
+        category: { type: string }
+        aiSharePct: { type: number }
+        searchSharePct: { type: number }
+        source: { type: string }
+        sourceUrl: { type: string }
+      required: [category, aiSharePct, searchSharePct, source, sourceUrl]
+    ResearchAuthorityShare:
+      type: object
+      properties:
+        bucket: { type: string }
+        sharePct: { type: number }
+        source: { type: string }
+        sourceUrl: { type: string }
+      required: [bucket, sharePct, source, sourceUrl]
+    ResearchImplicationSource:
+      type: object
+      properties:
+        name: { type: string }
+        url: { type: string }
+      required: [name, url]
+    ResearchImplication:
+      type: object
+      properties:
+        title: { type: string }
+        detail: { type: string }
+        sources:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResearchImplicationSource"
+      required: [title, detail, sources]
+    ResearchSource:
+      type: object
+      properties:
+        name: { type: string }
+        publisher: { type: string }
+        url: { type: string }
+        methodology: { type: string }
+        date: { type: string }
+      required: [name, publisher, url, methodology, date]
+    AeoResearch:
+      type: object
+      properties:
+        updatedAt: { type: string }
+        kpis:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResearchStat"
+        ctrImpact:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResearchCtrImpact"
+        citationsPerResponse:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResearchCitationsPerResponse"
+        platformTrafficShare:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResearchPlatformShare"
+        sourceTypeShare:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResearchSourceTypeShare"
+        domainAuthorityShare:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResearchAuthorityShare"
+        adoption:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResearchStat"
+        investment:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResearchStat"
+        implications:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResearchImplication"
+        sources:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResearchSource"
+      required:
+        [
+          updatedAt,
+          kpis,
+          ctrImpact,
+          citationsPerResponse,
+          platformTrafficShare,
+          sourceTypeShare,
+          domainAuthorityShare,
+          adoption,
+          investment,
+          implications,
+          sources,
+        ]
+    RegistryDomain:
+      type: object
+      properties:
+        id: { type: integer }
+        domain: { type: string }
+        domainType: { type: string }
+        isOwned: { type: boolean }
+        firstSeenAt: { type: string }
+      required: [id, domain, domainType, isOwned, firstSeenAt]
+    AddCompetitorRequest:
+      type: object
+      properties:
+        companyId: { type: integer }
+        domain: { type: string }
+      required: [companyId, domain]
+    StrategyIdea:
+      type: object
+      required: [id, title, category, playType, description, rationale, priority]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        category: { type: string, enum: [on_page, off_page] }
+        playType: { type: string }
+        description: { type: string }
+        rationale: { type: string }
+        priority: { type: string, enum: [P0, P1, P2] }
+    StrategyIdeaInput:
+      type: object
+      required: [title, category, playType, description, rationale, priority]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        category: { type: string, enum: [on_page, off_page] }
+        playType: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, minLength: 1, maxLength: 1500 }
+        rationale: { type: string, minLength: 1, maxLength: 1500 }
+        priority: { type: string, enum: [P0, P1, P2] }
+    StrategyItem:
+      type: object
+      required:
+        [
+          id,
+          ideaId,
+          companyId,
+          ideaTitle,
+          ideaCategory,
+          ideaPlayType,
+          status,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id: { type: integer }
+        ideaId: { type: integer }
+        companyId: { type: integer }
+        ideaTitle: { type: string }
+        ideaCategory: { type: string }
+        ideaPlayType: { type: string }
+        moneyTopic: { type: ["string", "null"] }
+        moneyTopicId: { type: ["integer", "null"] }
+        moneyTopicName: { type: ["string", "null"] }
+        status: { type: string, enum: [not_started, in_progress, live] }
+        notes: { type: ["string", "null"] }
+        brief:
+          anyOf:
+            - $ref: "#/components/schemas/ActionBrief"
+            - type: "null"
+        targetDate: { type: ["string", "null"] }
+        liveAt: { type: ["string", "null"], format: date-time }
+        auditImpact:
+          oneOf:
+            - $ref: "#/components/schemas/StrategyAuditImpact"
+            - type: "null"
+        evidence:
+          oneOf:
+            - $ref: "#/components/schemas/StrategyItemEvidence"
+            - type: "null"
+        createdAt: { type: string }
+        updatedAt: { type: string }
+    StrategyAuditImpact:
+      type: object
+      required: [auditId, quickWinCode, status, liveAt, baseline, after, citationRateBefore, citationRateAfter, visibilityBefore, visibilityAfter]
+      properties:
+        auditId: { type: integer }
+        quickWinCode: { type: string }
+        status: { type: string, enum: [not_started, in_progress, live] }
+        liveAt: { type: ["string", "null"], format: date-time }
+        baseline: { $ref: "#/components/schemas/ImpactMeasurement" }
+        after:
+          oneOf:
+            - { $ref: "#/components/schemas/ImpactMeasurement" }
+            - { type: "null" }
+        citationRateBefore: { type: ["number", "null"] }
+        citationRateAfter: { type: ["number", "null"] }
+        visibilityBefore: { type: ["number", "null"] }
+        visibilityAfter: { type: ["number", "null"] }
+    StrategyItemEvidence:
+      type: object
+      required:
+        [
+          findingId,
+          jobId,
+          promptId,
+          promptText,
+          topic,
+          evidenceUrls,
+          runIds,
+          createdAt,
+        ]
+      properties:
+        findingId: { type: integer }
+        jobId: { type: integer }
+        promptId: { type: integer }
+        promptText: { type: string }
+        topic: { type: string }
+        rationale: { type: ["string", "null"] }
+        evidenceUrls:
+          type: array
+          items: { type: string }
+        runIds:
+          type: array
+          items: { type: integer }
+        createdAt: { type: string }
+    StrategyItemInput:
+      type: object
+      required: [companyId]
+      properties:
+        ideaId: { type: ["integer", "null"] }
+        newIdea:
+          anyOf:
+            - $ref: "#/components/schemas/StrategyIdeaInput"
+            - type: "null"
+        companyId: { type: integer }
+        moneyTopic: { type: ["string", "null"] }
+        moneyTopicId: { type: ["integer", "null"] }
+        status: { type: string, enum: [not_started, in_progress, live] }
+        notes: { type: ["string", "null"] }
+        brief:
+          anyOf:
+            - $ref: "#/components/schemas/ActionBriefInput"
+            - type: "null"
+        targetDate: { type: ["string", "null"] }
+    StrategyItemUpdate:
+      type: object
+      properties:
+        moneyTopic: { type: ["string", "null"] }
+        moneyTopicId: { type: ["integer", "null"] }
+        status: { type: string, enum: [not_started, in_progress, live] }
+        notes: { type: ["string", "null"] }
+        brief:
+          anyOf:
+            - $ref: "#/components/schemas/ActionBriefInput"
+            - type: "null"
+        targetDate: { type: ["string", "null"] }
+    ActionBrief:
+      type: object
+      required: [actionAngle]
+      properties:
+        targetAudience: { type: ["string", "null"] }
+        actionAngle: { type: string, minLength: 1, maxLength: 1000 }
+        proofPoint: { type: ["string", "null"] }
+        owner: { type: ["string", "null"] }
+        successMetric: { type: ["string", "null"] }
+    ActionBriefInput:
+      type: object
+      required: [actionAngle]
+      properties:
+        targetAudience: { type: ["string", "null"], maxLength: 300 }
+        actionAngle: { type: string, minLength: 1, maxLength: 1000 }
+        proofPoint: { type: ["string", "null"], maxLength: 1000 }
+        owner: { type: ["string", "null"], maxLength: 200 }
+        successMetric: { type: ["string", "null"], maxLength: 500 }
+    MoneyTopic:
+      type: object
+      required: [id, companyId, topic, priority, createdAt]
+      properties:
+        id: { type: integer }
+        companyId: { type: integer }
+        topic: { type: string }
+        question: { type: ["string", "null"] }
+        source: { type: ["string", "null"] }
+        priority: { type: string, enum: [very_high, high, medium, low] }
+        createdAt: { type: string }
+    MoneyTopicInput:
+      type: object
+      required: [topic]
+      properties:
+        topic: { type: string, minLength: 1, maxLength: 200 }
+        question: { type: ["string", "null"] }
+        source: { type: ["string", "null"] }
+        priority: { type: string, enum: [very_high, high, medium, low] }
+    TopicPromptInput:
+      type: object
+      required: [text]
+      properties:
+        text: { type: string, minLength: 3 }
+        tags:
+          type: array
+          items: { type: string }
+    AttachPromptInput:
+      type: object
+      required: [promptId]
+      properties:
+        promptId: { type: integer }
+    WeeklyMeasurement:
+      type: object
+      required: [id, companyId, weekOf, totalPrompts, brandMentions, createdAt]
+      properties:
+        id: { type: integer }
+        companyId: { type: integer }
+        weekOf: { type: string }
+        totalPrompts: { type: integer }
+        brandMentions: { type: integer }
+        competitorMentionsAvg: { type: ["number", "null"] }
+        shareOfVoicePct: { type: ["number", "null"] }
+        consensusAnswer: { type: ["boolean", "null"] }
+        topPageType: { type: ["string", "null"] }
+        keyTakeaway: { type: ["string", "null"] }
+        createdAt: { type: string }
+    WeeklyMeasurementInput:
+      type: object
+      required: [weekOf]
+      properties:
+        weekOf: { type: string, minLength: 4 }
+        totalPrompts: { type: integer }
+        brandMentions: { type: integer }
+        competitorMentionsAvg: { type: ["number", "null"] }
+        shareOfVoicePct: { type: ["number", "null"] }
+        consensusAnswer: { type: ["boolean", "null"] }
+        topPageType: { type: ["string", "null"] }
+        keyTakeaway: { type: ["string", "null"] }
+    PlaybookTopicPrompt:
+      type: object
+      required: [id, text, active, runCount, lastVisibilityPct, lastRunAt]
+      properties:
+        id: { type: integer }
+        text: { type: string }
+        active: { type: boolean }
+        runCount: { type: integer }
+        lastVisibilityPct: { type: ["number", "null"] }
+        lastRunAt: { type: ["string", "null"] }
+    PlaybookTopicStrategy:
+      type: object
+      required: [total, notStarted, inProgress, live]
+      properties:
+        total: { type: integer }
+        notStarted: { type: integer }
+        inProgress: { type: integer }
+        live: { type: integer }
+    PlaybookMoneyTopic:
+      type: object
+      required: [id, companyId, topic, priority, createdAt, prompts, strategy]
+      properties:
+        id: { type: integer }
+        companyId: { type: integer }
+        topic: { type: string }
+        question: { type: ["string", "null"] }
+        source: { type: ["string", "null"] }
+        priority: { type: string, enum: [very_high, high, medium, low] }
+        createdAt: { type: string }
+        prompts:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlaybookTopicPrompt"
+        strategy:
+          $ref: "#/components/schemas/PlaybookTopicStrategy"
+    PlaybookTopDomain:
+      type: object
+      required: [domain, domainType, retrievals]
+      properties:
+        domain: { type: string }
+        domainType: { type: string }
+        retrievals: { type: integer }
+    PlaybookTracking:
+      type: object
+      required: [promptCount, activePromptCount, runCount, citedDomainCount, topDomains]
+      properties:
+        promptCount: { type: integer }
+        activePromptCount: { type: integer }
+        runCount: { type: integer }
+        citedDomainCount: { type: integer }
+        lastRunAt: { type: ["string", "null"] }
+        topDomains:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlaybookTopDomain"
+    PlaybookSuggestedWeek:
+      type: object
+      required: [weekOf, totalPrompts, brandMentions]
+      properties:
+        weekOf: { type: string }
+        totalPrompts: { type: integer }
+        brandMentions: { type: integer }
+        competitorMentionsAvg: { type: ["number", "null"] }
+        shareOfVoicePct: { type: ["number", "null"] }
+        topPageType: { type: ["string", "null"] }
+    CompanyPlaybook:
+      type: object
+      required:
+        [
+          company,
+          moneyTopics,
+          tracking,
+          onsiteItems,
+          offsiteItems,
+          measurements,
+        ]
+      properties:
+        company:
+          $ref: "#/components/schemas/Company"
+        moneyTopics:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlaybookMoneyTopic"
+        tracking:
+          $ref: "#/components/schemas/PlaybookTracking"
+        onsiteItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/StrategyItem"
+        offsiteItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/StrategyItem"
+        measurements:
+          type: array
+          items:
+            $ref: "#/components/schemas/WeeklyMeasurement"
+        suggestedWeek:
+          $ref: "#/components/schemas/PlaybookSuggestedWeek"

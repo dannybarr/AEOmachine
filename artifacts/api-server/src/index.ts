@@ -1,13 +1,10 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { startDailyTrackingScheduler } from "./lib/scheduler";
+import { validateRegistry } from "./lib/modelRegistry";
+import { startEntityExtractionWorker } from "./lib/entityExtraction";
 
-const rawPort = process.env["PORT"];
-
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
-}
+const rawPort = process.env["PORT"] ?? "3000";
 
 const port = Number(rawPort);
 
@@ -22,4 +19,10 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+  // Validate the model registry against Requesty before any scheduled runs;
+  // unknown ids become visibly unavailable, never silent fallbacks.
+  void validateRegistry().finally(() => {
+    startEntityExtractionWorker();
+    startDailyTrackingScheduler();
+  });
 });

@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/aeo-research/"
+title = "AEO Research Dashboard"
+description = "A research workspace for exploring answer engine visibility evidence, providers, sources, and strategy findings."
+version = "1.0.0"
+id = "artifacts/aeo-research"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/aeo-research/" ]
+localPort = 24329
+
+[services.development]
+run = "pnpm --filter @workspace/aeo-research run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/aeo-research", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/aeo-research/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24329"
+BASE_PATH = "/aeo-research/"
