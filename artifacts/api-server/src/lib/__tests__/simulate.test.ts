@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   detectBrandMention,
   extractDeltaCitations,
+  extractChunkCitations,
   classifySearchOutcome,
   newCollector,
   emptyDiagnostics,
@@ -118,6 +119,103 @@ describe("extractDeltaCitations (provider response fixtures)", () => {
     expect(c.sources).toHaveLength(0);
     expect(c.diagnostics.metadataEvents).toBe(0);
     expect(c.diagnostics.unknownShapes).toBe(0);
+  });
+
+  it("never scrapes URLs out of answer prose", () => {
+    const c = run([{ content: "Read https://evil.example/page and www.also-evil.test/x" } as SearchDelta]);
+    expect(c.sources).toHaveLength(0);
+    expect(c.diagnostics.metadataEvents).toBe(0);
+  });
+});
+
+describe("extractChunkCitations (Requesty / provider stream fixtures)", () => {
+  function runChunks(chunks: unknown[]): Collector {
+    const c = newCollector();
+    for (const chunk of chunks) extractChunkCitations(chunk, c);
+    c.diagnostics.extracted = c.sources.length;
+    return c;
+  }
+
+  it("extracts Requesty Chat Completions web_search.content", async () => {
+    const { requestyChatCompletionsWebSearchChunk } = await import("./fixtures/requesty-citation-chunks");
+    const c = runChunks([requestyChatCompletionsWebSearchChunk]);
+    expect(c.sources.map((s) => s.url)).toEqual(["https://example.com/news"]);
+    expect(c.diagnostics.observedShapes).toContain("delta.web_search.content");
+  });
+
+  it("extracts Responses-style flat url_citation.url annotations", async () => {
+    const { requestyResponsesStyleAnnotationChunk } = await import("./fixtures/requesty-citation-chunks");
+    const c = runChunks([requestyResponsesStyleAnnotationChunk]);
+    expect(c.sources.map((s) => s.url)).toEqual(["https://example.com/ai-news"]);
+    expect(c.diagnostics.observedShapes).toContain("delta.annotations.url");
+  });
+
+  it("extracts nested url_citation payloads", async () => {
+    const { nestedUrlCitationChunk } = await import("./fixtures/requesty-citation-chunks");
+    const c = runChunks([nestedUrlCitationChunk]);
+    expect(c.sources.map((s) => s.domain)).toEqual(["example.com"]);
+  });
+
+  it("extracts Perplexity-style root citations on a terminal empty-delta chunk", async () => {
+    const { perplexityRootCitationsChunk } = await import("./fixtures/requesty-citation-chunks");
+    const c = runChunks([perplexityRootCitationsChunk]);
+    expect(c.sources.map((s) => s.domain)).toEqual(["bankrate.com", "nerdwallet.com"]);
+    expect(c.diagnostics.observedShapes).toEqual(
+      expect.arrayContaining(["chunk.citations", "chunk.search_results"]),
+    );
+  });
+
+  it("extracts citations from a trailing chunk with empty choices", async () => {
+    const { citationsOnEmptyChoicesChunk } = await import("./fixtures/requesty-citation-chunks");
+    const c = runChunks([citationsOnEmptyChoicesChunk]);
+    expect(c.sources).toHaveLength(1);
+    expect(c.sources[0]!.domain).toBe("docs.perplexity.ai");
+  });
+
+  it("extracts non-delta message.annotations", async () => {
+    const { messageAnnotationsChunk } = await import("./fixtures/requesty-citation-chunks");
+    const c = runChunks([messageAnnotationsChunk]);
+    expect(c.sources.map((s) => s.domain)).toEqual(["ft.com"]);
+    expect(c.diagnostics.seenCitationKeys).toContain("message.annotations");
+  });
+
+  it("extracts Gemini grounding_metadata.web.uri and records bare type:annotation as drift", async () => {
+    const { geminiGroundingMetadataChunk } = await import("./fixtures/requesty-citation-chunks");
+    const c = runChunks([geminiGroundingMetadataChunk]);
+    expect(c.sources.map((s) => s.domain)).toEqual(["moneyhelper.org.uk"]);
+    expect(c.diagnostics.unknownAnnotationTypes).toEqual(["annotation"]);
+    expect(c.diagnostics.extracted).toBe(1);
+  });
+
+  it("extracts web_search content uri aliases", async () => {
+    const { geminiWebSearchUriChunk } = await import("./fixtures/requesty-citation-chunks");
+    const c = runChunks([geminiWebSearchUriChunk]);
+    expect(c.sources[0]!.domain).toBe("vertexaisearch.cloud.google.com");
+  });
+
+  it("extracts Anthropic web_search_result_location annotations", async () => {
+    const { anthropicWebSearchResultLocationChunk } = await import("./fixtures/requesty-citation-chunks");
+    const c = runChunks([anthropicWebSearchResultLocationChunk]);
+    expect(c.sources.map((s) => s.url)).toEqual(["https://example.com/ai-news"]);
+  });
+
+  it("extracts xAI dual shapes with dedupe", async () => {
+    const { xaiDualShapeChunk } = await import("./fixtures/requesty-citation-chunks");
+    const c = runChunks([xaiDualShapeChunk]);
+    expect(c.sources.map((s) => s.url)).toEqual(["https://x.example/one", "https://y.example/two"]);
+  });
+
+  it("extracts annotations nested on array content parts", async () => {
+    const { contentPartAnnotationsChunk } = await import("./fixtures/requesty-citation-chunks");
+    const c = runChunks([contentPartAnnotationsChunk]);
+    expect(c.sources.map((s) => s.domain)).toEqual(["bankofengland.co.uk"]);
+  });
+
+  it("extracts web_search.results alias", async () => {
+    const { webSearchResultsAliasChunk } = await import("./fixtures/requesty-citation-chunks");
+    const c = runChunks([webSearchResultsAliasChunk]);
+    expect(c.sources.map((s) => s.domain)).toEqual(["which.co.uk"]);
+    expect(c.diagnostics.observedShapes).toContain("delta.web_search.results");
   });
 });
 

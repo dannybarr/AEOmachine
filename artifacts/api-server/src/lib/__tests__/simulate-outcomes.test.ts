@@ -7,7 +7,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
  */
 
 interface FakeChunk {
-  choices: Array<{ delta: Record<string, unknown> }>;
+  choices?: Array<{ delta?: Record<string, unknown>; message?: Record<string, unknown> }>;
+  citations?: unknown;
+  search_results?: unknown;
 }
 
 // Script of behaviors consumed by successive client.chat.completions.create calls.
@@ -299,6 +301,45 @@ describe("runSimulation outcome states (mocked streams)", () => {
     const out = await runSimulation("p", SEARCH_MODEL);
     expect(out.answerText).toBe("Partial ans");
     expect(out.searchStatus).toBe("search_no_citations");
+  });
+
+  it("captures Perplexity-style root citations on a trailing empty-choices chunk", async () => {
+    script.push({
+      kind: "stream",
+      chunks: [
+        textChunk("Rates from Bankrate."),
+        {
+          citations: ["https://www.bankrate.com/banking/savings/"],
+          choices: [],
+        },
+      ],
+    });
+    const out = await runSimulation("p", SEARCH_MODEL);
+    expect(out.searchStatus).toBe("provider_cited");
+    expect(out.citationEligible).toBe(true);
+    expect(out.sources.map((s) => s.domain)).toEqual(["bankrate.com"]);
+    expect(out.diagnostics.observedShapes).toContain("chunk.citations");
+  });
+
+  it("captures Responses-style flat annotation URLs on the delta", async () => {
+    script.push({
+      kind: "stream",
+      chunks: [
+        {
+          choices: [
+            {
+              delta: {
+                content: "Cited.",
+                annotations: [{ type: "url_citation", url: "https://example.com/ai-news" }],
+              },
+            },
+          ],
+        },
+      ],
+    });
+    const out = await runSimulation("p", SEARCH_MODEL);
+    expect(out.searchStatus).toBe("provider_cited");
+    expect(out.sources[0]!.url).toBe("https://example.com/ai-news");
   });
 
   it("covers every enabled registry model with an explicit outcome (default coverage regression)", async () => {

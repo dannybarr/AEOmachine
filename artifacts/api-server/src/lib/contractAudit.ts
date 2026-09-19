@@ -42,14 +42,17 @@ export interface ModelAuditResult {
   urlsChecked: number;
   /** Probed URLs that answered with HTTP < 400. */
   urlsOk: number;
-  diagnostics: {
-    metadataEvents: number;
-    invalidUrls: number;
-    unknownAnnotationTypes: string[];
-    unknownShapes: number;
-    redirectsResolved: number;
-    redirectsFailed: number;
-  } | null;
+      diagnostics: {
+        metadataEvents: number;
+        invalidUrls: number;
+        unknownAnnotationTypes: string[];
+        unknownShapes: number;
+        redirectsResolved: number;
+        redirectsFailed: number;
+        observedShapes: string[];
+        seenCitationKeys: string[];
+        unparsedCitationKeys: string[];
+      } | null;
   durationMs: number | null;
   /** Sanitized failure reason (no payloads, no secrets). */
   error: string | null;
@@ -150,6 +153,9 @@ async function auditModel(m: RegistryView): Promise<ModelAuditResult> {
         unknownShapes: sim.diagnostics.unknownShapes,
         redirectsResolved: sim.diagnostics.redirectsResolved,
         redirectsFailed: sim.diagnostics.redirectsFailed,
+        observedShapes: sim.diagnostics.observedShapes,
+        seenCitationKeys: sim.diagnostics.seenCitationKeys,
+        unparsedCitationKeys: sim.diagnostics.unparsedCitationKeys,
       },
       durationMs: sim.durationMs,
     };
@@ -263,6 +269,9 @@ async function runAudit(report: ContractAuditReport, models: RegistryView[]): Pr
           urlsOk: `${r.urlsOk}/${r.urlsChecked}`,
           unknownTypes: r.diagnostics?.unknownAnnotationTypes ?? [],
           unknownShapes: r.diagnostics?.unknownShapes ?? 0,
+          observedShapes: r.diagnostics?.observedShapes ?? [],
+          seenCitationKeys: r.diagnostics?.seenCitationKeys ?? [],
+          unparsedCitationKeys: r.diagnostics?.unparsedCitationKeys ?? [],
           error: r.error,
         })),
       },

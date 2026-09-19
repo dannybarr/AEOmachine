@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { PromptRunSearchStatus } from './promptRunSearchStatus';
+import type { PromptRunVisibilityRung } from './promptRunVisibilityRung';
 
 export interface PromptRun {
   id: number;
@@ -26,4 +27,9 @@ export interface PromptRun {
   searchStatus?: PromptRunSearchStatus;
   /** @nullable */
   citationEligible?: boolean | null;
+  /**
+   * recommended = explicit pick/shortlist; cited = brand domain in verified citations; mentioned = name in prose without citation gravity; absent = neither; null = legacy unscored run
+   * @nullable
+   */
+  visibilityRung?: PromptRunVisibilityRung;
 }

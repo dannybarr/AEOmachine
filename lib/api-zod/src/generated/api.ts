@@ -434,7 +434,10 @@ export const GetContractAuditResponse = zod.object({
   "unknownAnnotationTypes": zod.array(zod.string()),
   "unknownShapes": zod.int(),
   "redirectsResolved": zod.int(),
-  "redirectsFailed": zod.int()
+  "redirectsFailed": zod.int(),
+  "observedShapes": zod.array(zod.string()).optional(),
+  "seenCitationKeys": zod.array(zod.string()).optional(),
+  "unparsedCitationKeys": zod.array(zod.string()).optional()
 }).describe('Structured citation-extraction diagnostics for a run'),zod.null()]).optional(),
   "durationMs": zod.int().nullish(),
   "error": zod.string().nullish()
@@ -480,7 +483,10 @@ export const StartContractAuditResponse = zod.object({
   "unknownAnnotationTypes": zod.array(zod.string()),
   "unknownShapes": zod.int(),
   "redirectsResolved": zod.int(),
-  "redirectsFailed": zod.int()
+  "redirectsFailed": zod.int(),
+  "observedShapes": zod.array(zod.string()).optional(),
+  "seenCitationKeys": zod.array(zod.string()).optional(),
+  "unparsedCitationKeys": zod.array(zod.string()).optional()
 }).describe('Structured citation-extraction diagnostics for a run'),zod.null()]).optional(),
   "durationMs": zod.int().nullish(),
   "error": zod.string().nullish()
@@ -879,7 +885,8 @@ export const GetPromptResponse = zod.object({
   "citationCount": zod.int(),
   "answerPreview": zod.string().nullish(),
   "searchStatus": zod.union([zod.literal('provider_cited'),zod.literal('search_no_citations'),zod.literal('extraction_failed'),zod.literal('provider_search'),zod.literal('unsupported'),zod.literal('tool_rejected'),zod.literal(null)]).nullish().describe('provider_cited = search + verified citations; search_no_citations = search performed, provider returned no citation metadata; extraction_failed = metadata present but unverifiable; provider_search = legacy search label (pre-outcome-model); null = legacy run (search behavior unknown)'),
-  "citationEligible": zod.boolean().nullish()
+  "citationEligible": zod.boolean().nullish(),
+  "visibilityRung": zod.union([zod.literal('recommended'),zod.literal('cited'),zod.literal('mentioned'),zod.literal('absent'),zod.literal(null)]).nullish().describe('recommended = explicit pick/shortlist; cited = brand domain in verified citations; mentioned = name in prose without citation gravity; absent = neither; null = legacy unscored run')
 }))
 }))
 
@@ -951,7 +958,8 @@ export const SimulatePromptResponse = zod.object({
   "citationCount": zod.int(),
   "answerPreview": zod.string().nullish(),
   "searchStatus": zod.union([zod.literal('provider_cited'),zod.literal('search_no_citations'),zod.literal('extraction_failed'),zod.literal('provider_search'),zod.literal('unsupported'),zod.literal('tool_rejected'),zod.literal(null)]).nullish().describe('provider_cited = search + verified citations; search_no_citations = search performed, provider returned no citation metadata; extraction_failed = metadata present but unverifiable; provider_search = legacy search label (pre-outcome-model); null = legacy run (search behavior unknown)'),
-  "citationEligible": zod.boolean().nullish()
+  "citationEligible": zod.boolean().nullish(),
+  "visibilityRung": zod.union([zod.literal('recommended'),zod.literal('cited'),zod.literal('mentioned'),zod.literal('absent'),zod.literal(null)]).nullish().describe('recommended = explicit pick/shortlist; cited = brand domain in verified citations; mentioned = name in prose without citation gravity; absent = neither; null = legacy unscored run')
 })
 
 
@@ -973,7 +981,8 @@ export const ListPromptRunsResponseItem = zod.object({
   "citationCount": zod.int(),
   "answerPreview": zod.string().nullish(),
   "searchStatus": zod.union([zod.literal('provider_cited'),zod.literal('search_no_citations'),zod.literal('extraction_failed'),zod.literal('provider_search'),zod.literal('unsupported'),zod.literal('tool_rejected'),zod.literal(null)]).nullish().describe('provider_cited = search + verified citations; search_no_citations = search performed, provider returned no citation metadata; extraction_failed = metadata present but unverifiable; provider_search = legacy search label (pre-outcome-model); null = legacy run (search behavior unknown)'),
-  "citationEligible": zod.boolean().nullish()
+  "citationEligible": zod.boolean().nullish(),
+  "visibilityRung": zod.union([zod.literal('recommended'),zod.literal('cited'),zod.literal('mentioned'),zod.literal('absent'),zod.literal(null)]).nullish().describe('recommended = explicit pick/shortlist; cited = brand domain in verified citations; mentioned = name in prose without citation gravity; absent = neither; null = legacy unscored run')
 })
 export const ListPromptRunsResponse = zod.array(ListPromptRunsResponseItem)
 
@@ -1099,7 +1108,8 @@ export const ListRunsResponseItem = zod.object({
   "citationCount": zod.int(),
   "answerPreview": zod.string().nullish(),
   "searchStatus": zod.union([zod.literal('provider_cited'),zod.literal('search_no_citations'),zod.literal('extraction_failed'),zod.literal('provider_search'),zod.literal('unsupported'),zod.literal('tool_rejected'),zod.literal(null)]).nullish().describe('provider_cited = search + verified citations; search_no_citations = search performed, provider returned no citation metadata; extraction_failed = metadata present but unverifiable; provider_search = legacy search label (pre-outcome-model); null = legacy run (search behavior unknown)'),
-  "citationEligible": zod.boolean().nullish()
+  "citationEligible": zod.boolean().nullish(),
+  "visibilityRung": zod.union([zod.literal('recommended'),zod.literal('cited'),zod.literal('mentioned'),zod.literal('absent'),zod.literal(null)]).nullish().describe('recommended = explicit pick/shortlist; cited = brand domain in verified citations; mentioned = name in prose without citation gravity; absent = neither; null = legacy unscored run')
 })
 export const ListRunsResponse = zod.array(ListRunsResponseItem)
 
@@ -1122,7 +1132,8 @@ export const GetRunResponse = zod.object({
   "citationCount": zod.int(),
   "answerPreview": zod.string().nullish(),
   "searchStatus": zod.union([zod.literal('provider_cited'),zod.literal('search_no_citations'),zod.literal('extraction_failed'),zod.literal('provider_search'),zod.literal('unsupported'),zod.literal('tool_rejected'),zod.literal(null)]).nullish().describe('provider_cited = search + verified citations; search_no_citations = search performed, provider returned no citation metadata; extraction_failed = metadata present but unverifiable; provider_search = legacy search label (pre-outcome-model); null = legacy run (search behavior unknown)'),
-  "citationEligible": zod.boolean().nullish()
+  "citationEligible": zod.boolean().nullish(),
+  "visibilityRung": zod.union([zod.literal('recommended'),zod.literal('cited'),zod.literal('mentioned'),zod.literal('absent'),zod.literal(null)]).nullish().describe('recommended = explicit pick/shortlist; cited = brand domain in verified citations; mentioned = name in prose without citation gravity; absent = neither; null = legacy unscored run')
 }).and(zod.object({
   "answerText": zod.string(),
   "citations": zod.array(zod.object({
@@ -1140,7 +1151,10 @@ export const GetRunResponse = zod.object({
   "unknownAnnotationTypes": zod.array(zod.string()),
   "unknownShapes": zod.int(),
   "redirectsResolved": zod.int(),
-  "redirectsFailed": zod.int()
+  "redirectsFailed": zod.int(),
+  "observedShapes": zod.array(zod.string()).optional(),
+  "seenCitationKeys": zod.array(zod.string()).optional(),
+  "unparsedCitationKeys": zod.array(zod.string()).optional()
 }).describe('Structured citation-extraction diagnostics for a run'),zod.null()]).describe('Stored citation-extraction diagnostics for this run; null for legacy runs that predate diagnostics capture')
 }))
 

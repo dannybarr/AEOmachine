@@ -2202,6 +2202,18 @@ components:
         unknownShapes: { type: integer }
         redirectsResolved: { type: integer }
         redirectsFailed: { type: integer }
+        observedShapes:
+          type: array
+          items: { type: string }
+          description: Recognized citation metadata shapes that produced at least one metadata event
+        seenCitationKeys:
+          type: array
+          items: { type: string }
+          description: Citation-related keys observed on the stream, including empty payloads
+        unparsedCitationKeys:
+          type: array
+          items: { type: string }
+          description: Citation-like keys whose structure could not be parsed into URLs
     CitationQualityModel:
       type: object
       required: [model, label, inRegistry, runs, outcomes, citationEligibleRuns, verifiedCitations, zeroCitationEligibleRuns]
@@ -2630,6 +2642,10 @@ components:
             ]
           description: "provider_cited = search + verified citations; search_no_citations = search performed, provider returned no citation metadata; extraction_failed = metadata present but unverifiable; provider_search = legacy search label (pre-outcome-model); null = legacy run (search behavior unknown)"
         citationEligible: { type: ["boolean", "null"] }
+        visibilityRung:
+          type: ["string", "null"]
+          enum: [recommended, cited, mentioned, absent, null]
+          description: "recommended = explicit pick/shortlist; cited = brand domain in verified citations; mentioned = name in prose without citation gravity; absent = neither; null = legacy unscored run"
     PromptRunDetail:
       allOf:
         - $ref: "#/components/schemas/PromptRun"

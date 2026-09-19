@@ -1,5 +1,5 @@
 import { useSearch } from "wouter";
-import { useGetDashboard } from "@workspace/api-client-react";
+import { useGetDashboard, useGetCitationQuality } from "@workspace/api-client-react";
 import { useModels } from "@/hooks/use-models";
 import { modelLabel } from "@/lib/model-meta";
 import { MethodologyPanel } from "@/components/MethodologyPanel";
@@ -60,6 +60,7 @@ export default function Dashboard() {
   const days = period === "90" ? 90 : period === "180" ? 180 : 30;
   const all = period === "all";
   const { data, isLoading } = useGetDashboard({ days, all, model, topic });
+  const { data: citationQuality } = useGetCitationQuality({ days: all ? 365 : days });
 
   if (isLoading && !data) {
     return <div className="p-4 sm:p-8 text-slate-quiet">Loading citation intelligence...</div>;
@@ -492,6 +493,55 @@ export default function Dashboard() {
             </div>
           </section>
         </div>
+
+        <section className="space-y-4" data-testid="citation-reliability">
+          <SectionHeading
+            title="Citation reliability by model"
+            subtitle="Distinguishes honest zeros (searched, no citation metadata) from extraction failures, tool rejections, and answer-only models. Verified citations are never scraped from answer text."
+          />
+          <div className="bg-paper border border-border rounded-2xl overflow-x-auto">
+            <table className="w-full min-w-[860px] text-sm">
+              <thead>
+                <tr className="bg-fog border-b border-border">
+                  <th className="font-medium text-slate-quiet text-left py-2.5 px-4">Model</th>
+                  <th className="font-medium text-slate-quiet text-right py-2.5 px-4">Cited</th>
+                  <th className="font-medium text-slate-quiet text-right py-2.5 px-4">Honest zeros</th>
+                  <th className="font-medium text-slate-quiet text-right py-2.5 px-4">Extraction failed</th>
+                  <th className="font-medium text-slate-quiet text-right py-2.5 px-4">Tool rejected</th>
+                  <th className="font-medium text-slate-quiet text-right py-2.5 px-4">Answer-only</th>
+                  <th className="font-medium text-slate-quiet text-right py-2.5 px-4">Verified citations</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(citationQuality?.models ?? []).length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="py-8 text-center text-slate-quiet">
+                      No citation-quality data in this window yet.
+                    </td>
+                  </tr>
+                )}
+                {(citationQuality?.models ?? []).map((m) => (
+                  <tr key={m.model} className="border-b border-border last:border-0 hover:bg-fog">
+                    <td className="py-3 px-4 font-medium">
+                      <span className="inline-flex items-center gap-2">
+                        {m.label}
+                        {m.supportsSearch === false && (
+                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-mist text-ash uppercase tracking-wide">No search</span>
+                        )}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-right tabular-nums">{formatNumber(m.outcomes.providerCited)}</td>
+                    <td className="py-3 px-4 text-right tabular-nums">{formatNumber(m.outcomes.searchNoCitations)}</td>
+                    <td className="py-3 px-4 text-right tabular-nums">{formatNumber(m.outcomes.extractionFailed)}</td>
+                    <td className="py-3 px-4 text-right tabular-nums">{formatNumber(m.outcomes.toolRejected)}</td>
+                    <td className="py-3 px-4 text-right tabular-nums">{formatNumber(m.outcomes.answerOnly)}</td>
+                    <td className="py-3 px-4 text-right tabular-nums text-slate-quiet">{formatNumber(m.verifiedCitations)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
       </div>
     </div>
   );

@@ -207,6 +207,7 @@ export * from './promptModelCoverage';
 export * from './promptRun';
 export * from './promptRunDetail';
 export * from './promptRunSearchStatus';
+export * from './promptRunVisibilityRung';
 export * from './promptSource';
 export * from './promptSourceType';
 export * from './promptSourceTypeType';

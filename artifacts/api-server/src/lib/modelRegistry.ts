@@ -6,8 +6,8 @@ import { logger } from "./logger";
  * Every model id is a Requesty router id, probe-verified before being added:
  * we streamed a real completion with `tools: [{ type: "web_search" }]` and
  * inspected the returned metadata. `supportsSearch: true` means the provider
- * actually attached grounded citation metadata (delta.annotations[].url_citation
- * and/or delta.web_search.content[]) on streamed chunks; `false` means the
+ * actually attached grounded citation metadata (see CITATIONS.md for the
+ * accepted stream shapes). `false` means the
  * model answers but performs no verifiable web retrieval through Requesty,
  * so its runs are citation-ineligible and never enter citation denominators.
  *

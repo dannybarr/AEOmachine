@@ -60,6 +60,7 @@ router.get("/runs", async (req, res): Promise<void> => {
         answerPreview: run.answerText.slice(0, 200),
         searchStatus: run.searchStatus ?? null,
         citationEligible: run.citationEligible ?? null,
+        visibilityRung: run.visibilityRung ?? null,
       })),
     ),
   );
@@ -100,6 +101,7 @@ router.get("/runs/:id", async (req, res): Promise<void> => {
       answerText: row.run.answerText,
       searchStatus: row.run.searchStatus ?? null,
       citationEligible: row.run.citationEligible ?? null,
+      visibilityRung: row.run.visibilityRung ?? null,
       citationDiagnostics: serializeDiagnostics(row.run.citationDiagnostics),
       citations: citations.map((c) => ({
         id: c.id,
@@ -126,21 +128,27 @@ function serializeDiagnostics(raw: unknown): {
   unknownShapes: number;
   redirectsResolved: number;
   redirectsFailed: number;
+  observedShapes: string[];
+  seenCitationKeys: string[];
+  unparsedCitationKeys: string[];
 } | null {
   if (!raw || typeof raw !== "object") return null;
   const d = raw as Record<string, unknown>;
   const num = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+  const strings = (v: unknown): string[] =>
+    Array.isArray(v) ? v.filter((t): t is string => typeof t === "string") : [];
   if (typeof d["metadataEvents"] !== "number") return null;
   return {
     extracted: num(d["extracted"]),
     metadataEvents: num(d["metadataEvents"]),
     invalidUrls: num(d["invalidUrls"]),
-    unknownAnnotationTypes: Array.isArray(d["unknownAnnotationTypes"])
-      ? d["unknownAnnotationTypes"].filter((t): t is string => typeof t === "string")
-      : [],
+    unknownAnnotationTypes: strings(d["unknownAnnotationTypes"]),
     unknownShapes: num(d["unknownShapes"]),
     redirectsResolved: num(d["redirectsResolved"]),
     redirectsFailed: num(d["redirectsFailed"]),
+    observedShapes: strings(d["observedShapes"]),
+    seenCitationKeys: strings(d["seenCitationKeys"]),
+    unparsedCitationKeys: strings(d["unparsedCitationKeys"]),
   };
 }
 

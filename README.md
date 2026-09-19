@@ -89,9 +89,10 @@ On API boot, the registry compares these IDs with Requesty's `/models` response
 and visibly disables missing IDs; it never silently substitutes a model.
 Simulation requests remain streamed and use Requesty's `web_search` tool where
 supported. Citation eligibility and URLs come only from provider-attached
-stream metadata (`annotations[].url_citation` or `web_search.content[]`), with
-diagnostics preserved for malformed or changed metadata shapes. Do not replace
-this with prose URL scraping if metric comparability matters.
+stream metadata (see `CITATIONS.md` for the accepted shapes). Diagnostics
+preserve malformed or changed metadata so honest zeros can be distinguished
+from extraction failure. Do not replace this with prose URL scraping if
+metric comparability matters.
 
 ## Development and route layout
 

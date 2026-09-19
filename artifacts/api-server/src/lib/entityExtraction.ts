@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { db, promptRunsTable, runAnswerEntitiesTable } from "@workspace/db";
 import { logger } from "./logger";
+import { classifyEntityRelationship, type EntityRelationship } from "./visibilityRung";
 
 export const ENTITY_EXTRACTOR_VERSION = "answer-entities-v3";
 export const ENTITY_EXTRACTION_MODEL = "openai/gpt-5-mini";
@@ -12,7 +13,7 @@ const MAX_ATTEMPTS = 2;
 const MODEL_TIMEOUT_MS = 45_000;
 const BACKFILL_PAGE_SIZE = 100;
 const MAX_BACKFILL_PAGES = 10;
-export type EntityRelationship = "recommended" | "compared" | "mentioned" | "other";
+export type { EntityRelationship };
 
 export interface ProposedEntity {
   name: string;
@@ -99,11 +100,17 @@ export function groundAndDedupeEntities(
     const evidenceExcerpt = evidenceExcerptFor(answerText, candidate.name);
     if (!evidenceExcerpt) continue;
     seen.add(normalizedName);
+    const relationship = classifyEntityRelationship(answerText, match[0]);
     grounded.push({
       name: match[0],
       normalizedName,
-      relationship: "mentioned",
-      observedReason: `The saved answer explicitly mentioned ${match[0]}.`,
+      relationship,
+      observedReason:
+        relationship === "recommended"
+          ? `The saved answer recommended ${match[0]}.`
+          : relationship === "compared"
+            ? `The saved answer compared ${match[0]}.`
+            : `The saved answer explicitly mentioned ${match[0]}.`,
       evidenceExcerpt,
     });
   }

@@ -24,6 +24,9 @@ const DIAG = {
   unknownShapes: 2,
   redirectsResolved: 1,
   redirectsFailed: 1,
+  observedShapes: ["delta.web_search.content"],
+  seenCitationKeys: ["delta.web_search"],
+  unparsedCitationKeys: ["delta.annotations"],
 };
 
 beforeAll(async () => {
