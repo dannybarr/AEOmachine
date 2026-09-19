@@ -74,3 +74,14 @@ export function searchStatusLabel(
   }
   return { label: "Unknown", tone: "muted" };
 }
+
+/** Human copy for the visibility ladder. */
+export function visibilityRungLabel(
+  visibilityRung: string | null | undefined,
+): { label: string; tone: "ok" | "muted" | "warn" } | null {
+  if (visibilityRung === "recommended") return { label: "Recommended", tone: "ok" };
+  if (visibilityRung === "cited") return { label: "Cited", tone: "ok" };
+  if (visibilityRung === "mentioned") return { label: "Mentioned", tone: "muted" };
+  if (visibilityRung === "absent") return { label: "Absent", tone: "warn" };
+  return null;
+}

@@ -3,7 +3,7 @@ import { useGetRun, getGetRunQueryKey } from "@workspace/api-client-react";
 import { ArrowLeft, Bot, Quote, ExternalLink, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useModels } from "@/hooks/use-models";
-import { modelLabel, searchStatusLabel } from "@/lib/model-meta";
+import { modelLabel, searchStatusLabel, visibilityRungLabel } from "@/lib/model-meta";
 
 export default function ChatDetail() {
   const { id } = useParams<{ id: string }>();
@@ -34,6 +34,7 @@ export default function ChatDetail() {
                 {modelLabel(models, run.model)}
               </span>
               <CitationStateBadge searchStatus={run.searchStatus} citationEligible={run.citationEligible} />
+              <VisibilityRungBadge visibilityRung={run.visibilityRung} />
               <span>
                 {new Date(run.createdAt).toLocaleString(undefined, { 
                   weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' 
@@ -76,16 +77,24 @@ export default function ChatDetail() {
           
           <div className="space-y-3">
             {run.citations?.length === 0 ? (
-              <div className="bg-fog border border-border rounded-lg p-6 text-center text-[13px] text-slate-quiet">
-                {run.searchStatus === "unsupported"
-                  ? "This model doesn't perform web search, so no verified citations are possible for this run."
-                  : run.searchStatus === "tool_rejected"
-                  ? "The provider rejected web search for this run — no verified citations available."
-                  : run.searchStatus === "search_no_citations" || run.searchStatus === "provider_search"
-                  ? "The provider searched the web but returned no citation metadata — an honest zero, counted in citation denominators."
-                  : run.searchStatus === "extraction_failed"
-                  ? "The provider returned citation metadata that could not be verified (malformed or unrecognized format). This run is excluded from verified citation metrics."
-                  : "No citations recorded. This is a legacy run — citation provenance is unknown."}
+              <div className="bg-fog border border-border rounded-lg p-6 text-center text-[13px] text-slate-quiet space-y-2">
+                <p>
+                  {run.searchStatus === "unsupported"
+                    ? "This model doesn't perform web search, so no verified citations are possible for this run."
+                    : run.searchStatus === "tool_rejected"
+                    ? "The provider rejected web search for this run — no verified citations available."
+                    : run.searchStatus === "search_no_citations" || run.searchStatus === "provider_search"
+                    ? "The provider searched the web but returned no citation metadata — an honest zero, counted in citation denominators."
+                    : run.searchStatus === "extraction_failed"
+                    ? "The provider returned citation metadata that could not be verified (malformed or unrecognized format). This run is excluded from verified citation metrics."
+                    : "No citations recorded. This is a legacy run — citation provenance is unknown."}
+                </p>
+                {run.citationEligible === false && run.searchStatus !== "unsupported" && (
+                  <p className="text-[11px] uppercase tracking-wider text-ash">Not citation-eligible</p>
+                )}
+                {run.citationEligible === true && run.searchStatus === "search_no_citations" && (
+                  <p className="text-[11px] uppercase tracking-wider text-ash">Citation-eligible honest zero</p>
+                )}
               </div>
             ) : (
               run.citations?.map((cit) => (
@@ -125,6 +134,44 @@ export default function ChatDetail() {
               ))
             )}
           </div>
+
+          {run.citationDiagnostics && (
+            <div className="bg-fog border border-border rounded-lg p-4 space-y-2" data-testid="citation-diagnostics">
+              <h3 className="text-[11px] font-medium text-ash uppercase tracking-wider">Citation diagnostics</h3>
+              <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[12px]">
+                <dt className="text-slate-quiet">Eligible</dt>
+                <dd className="text-foreground font-medium">{run.citationEligible ? "yes" : "no"}</dd>
+                <dt className="text-slate-quiet">Metadata events</dt>
+                <dd className="text-foreground font-medium tabular-nums">{run.citationDiagnostics.metadataEvents}</dd>
+                <dt className="text-slate-quiet">Extracted</dt>
+                <dd className="text-foreground font-medium tabular-nums">{run.citationDiagnostics.extracted ?? 0}</dd>
+                <dt className="text-slate-quiet">Unknown shapes</dt>
+                <dd className="text-foreground font-medium tabular-nums">{run.citationDiagnostics.unknownShapes}</dd>
+                <dt className="text-slate-quiet">Invalid URLs</dt>
+                <dd className="text-foreground font-medium tabular-nums">{run.citationDiagnostics.invalidUrls}</dd>
+              </dl>
+              {run.citationDiagnostics.observedShapes && run.citationDiagnostics.observedShapes.length > 0 && (
+                <p className="text-[11px] text-slate-quiet break-words">
+                  Shapes: {run.citationDiagnostics.observedShapes.join(", ")}
+                </p>
+              )}
+              {run.citationDiagnostics.seenCitationKeys && run.citationDiagnostics.seenCitationKeys.length > 0 && (
+                <p className="text-[11px] text-slate-quiet break-words">
+                  Seen keys: {run.citationDiagnostics.seenCitationKeys.join(", ")}
+                </p>
+              )}
+              {run.citationDiagnostics.unparsedCitationKeys && run.citationDiagnostics.unparsedCitationKeys.length > 0 && (
+                <p className="text-[11px] text-warning break-words">
+                  Unparsed: {run.citationDiagnostics.unparsedCitationKeys.join(", ")}
+                </p>
+              )}
+              {run.citationDiagnostics.unknownAnnotationTypes.length > 0 && (
+                <p className="text-[11px] text-warning break-words">
+                  Unknown annotation types: {run.citationDiagnostics.unknownAnnotationTypes.join(", ")}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -133,6 +180,19 @@ export default function ChatDetail() {
 
 function CitationStateBadge({ searchStatus, citationEligible }: { searchStatus?: string | null; citationEligible?: boolean | null }) {
   const s = searchStatusLabel(searchStatus, citationEligible);
+  return (
+    <span className={cn(
+      "text-[10px] font-medium tracking-wide uppercase px-2 py-1 rounded-full",
+      s.tone === "ok" ? "bg-[var(--positive-surface)] text-positive" : s.tone === "warn" ? "bg-[var(--warning-surface)] text-warning" : "bg-mist text-ash"
+    )}>
+      {s.label}
+    </span>
+  );
+}
+
+function VisibilityRungBadge({ visibilityRung }: { visibilityRung?: string | null }) {
+  const s = visibilityRungLabel(visibilityRung);
+  if (!s) return null;
   return (
     <span className={cn(
       "text-[10px] font-medium tracking-wide uppercase px-2 py-1 rounded-full",

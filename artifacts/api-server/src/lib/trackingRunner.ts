@@ -11,6 +11,7 @@ import {
   type TrackingJob,
 } from "@workspace/db";
 import { runSimulation, detectBrandMention } from "./simulate";
+import { classifyVisibilityRung } from "./visibilityRung";
 import { buildContextSnapshot } from "./companyContext";
 import {
   enabledModelIds,
@@ -77,6 +78,13 @@ export async function executeAndStoreSimulation(
     // discovery/research framing; jobs snapshot it purely for provenance.
     const simulation = await runSimulation(prompt.text, resolved);
     const mention = detectBrandMention(simulation.answerText, company.name);
+    const visibilityRung = classifyVisibilityRung({
+      answerText: simulation.answerText,
+      brandName: company.name,
+      brandMentioned: mention.mentioned,
+      companyDomain: company.domain,
+      citationDomains: simulation.sources.map((source) => source.domain),
+    });
 
     const [run] = await db
       .insert(promptRunsTable)
@@ -86,6 +94,7 @@ export async function executeAndStoreSimulation(
         answerText: simulation.answerText,
         brandMentioned: mention.mentioned,
         brandPosition: mention.position,
+        visibilityRung,
         searchStatus: simulation.searchStatus,
         citationEligible: simulation.citationEligible,
         citationDiagnostics: simulation.diagnostics,

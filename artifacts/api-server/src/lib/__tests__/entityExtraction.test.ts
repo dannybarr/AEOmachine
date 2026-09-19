@@ -16,7 +16,7 @@ describe("answer entity extraction helpers", () => {
       { name: "Missing Inc" },
     ]);
     expect(grounded.map(({ name, relationship }) => ({ name, relationship }))).toEqual([
-      { name: "ACME Labs", relationship: "mentioned" },
+      { name: "ACME Labs", relationship: "recommended" },
       { name: "CaféCo", relationship: "mentioned" },
     ]);
   });
@@ -50,6 +50,16 @@ describe("answer entity extraction helpers", () => {
     );
     expect(grounded.map((entity) => entity.name)).toEqual(["Alpha"]);
     expect(grounded[0]?.relationship).toBe("mentioned");
+  });
+
+  it("classifies recommend language from the answer, not from untrusted payload labels", () => {
+    const labeled = [{ name: "Acme Labs", relationship: "mentioned" }];
+    const grounded = groundAndDedupeEntities(
+      "I recommend Acme Labs for EIS investors.",
+      labeled,
+    );
+    expect(grounded[0]?.relationship).toBe("recommended");
+    expect(grounded[0]?.observedReason).toContain("recommended");
   });
 
   it("stops retrying at the maximum bounded attempt count", () => {

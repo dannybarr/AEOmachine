@@ -136,6 +136,7 @@ async function serializeRun(run: typeof promptRunsTable.$inferSelect, promptText
     answerPreview: run.answerText.slice(0, 200),
     searchStatus: run.searchStatus ?? null,
     citationEligible: run.citationEligible ?? null,
+    visibilityRung: run.visibilityRung ?? null,
   };
 }
 

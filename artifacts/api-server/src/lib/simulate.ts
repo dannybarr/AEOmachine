@@ -1,6 +1,27 @@
 import OpenAI from "openai";
 import { safeFetch } from "./safeFetch";
 import { getModel, resolveModelStrict } from "./modelRegistry";
+import {
+  type CitationDiagnostics,
+  type VerifiedSource,
+  extractChunkCitations,
+  newCollector,
+  deltaContentText,
+} from "./citationExtract";
+
+export type {
+  CitationDiagnostics,
+  Collector,
+  SearchDelta,
+  VerifiedSource,
+} from "./citationExtract";
+export {
+  emptyDiagnostics,
+  extractChunkCitations,
+  extractDeltaCitations,
+  newCollector,
+  deltaContentText,
+} from "./citationExtract";
 
 /**
  * Truthful per-run search/citation outcome model.
@@ -31,42 +52,6 @@ export type SearchStatus =
   | "unsupported"
   | "tool_rejected";
 
-export interface VerifiedSource {
-  domain: string;
-  url: string | null;
-  /** Raw provider-returned metadata that produced this citation (audit trail). */
-  metadata: unknown;
-}
-
-/** Structured extraction diagnostics captured for every run (audit trail). */
-export interface CitationDiagnostics {
-  /** Citation-metadata items observed on the stream (annotations + web_search entries). */
-  metadataEvents: number;
-  /** Verified citations successfully extracted (post-dedupe). */
-  extracted: number;
-  /** Metadata items rejected for malformed / non-http(s) URLs. */
-  invalidUrls: number;
-  /** Annotation `type` values seen that are not url_citation (shape drift signal). */
-  unknownAnnotationTypes: string[];
-  /** Annotations/web_search entries whose structure carried no recognizable URL. */
-  unknownShapes: number;
-  /** Grounding-redirect URLs successfully resolved to their real source. */
-  redirectsResolved: number;
-  /** Grounding-redirect URLs that could not be resolved (kept as provider URL). */
-  redirectsFailed: number;
-}
-
-export function emptyDiagnostics(): CitationDiagnostics {
-  return {
-    metadataEvents: 0,
-    extracted: 0,
-    invalidUrls: 0,
-    unknownAnnotationTypes: [],
-    unknownShapes: 0,
-    redirectsResolved: 0,
-    redirectsFailed: 0,
-  };
-}
 
 export interface SimulationOutput {
   answerText: string;
@@ -100,101 +85,6 @@ const ANSWER_ONLY_RETRY_INSTRUCTIONS =
 // would steer answers and invalidate metric comparability. Profile context
 // belongs only in discovery/analyst workflows (see companyContext.ts).
 
-interface StreamCitation {
-  url?: string;
-}
-
-/** Shapes Requesty attaches to streamed deltas for web search results. */
-export interface SearchDelta {
-  web_search?: { content?: { url?: string }[] };
-  annotations?: { type?: string; url_citation?: StreamCitation }[];
-}
-
-export interface Collector {
-  seen: Set<string>;
-  sources: VerifiedSource[];
-  diagnostics: CitationDiagnostics;
-}
-
-export function newCollector(): Collector {
-  return { seen: new Set(), sources: [], diagnostics: emptyDiagnostics() };
-}
-
-const MAX_UNKNOWN_TYPES = 8;
-
-function collectSource(url: unknown, metadata: unknown, c: Collector): void {
-  c.diagnostics.metadataEvents += 1;
-  if (typeof url !== "string" || url.length === 0) {
-    c.diagnostics.unknownShapes += 1;
-    return;
-  }
-  try {
-    const u = new URL(url);
-    // Only http(s) URLs with a real host qualify as verified citations —
-    // anything else (javascript:, data:, mailto:, ...) is unsafe to render
-    // as an external link and never provider search output.
-    if ((u.protocol !== "http:" && u.protocol !== "https:") || !u.hostname) {
-      c.diagnostics.invalidUrls += 1;
-      return;
-    }
-    const domain = u.hostname.replace(/^www\./, "");
-    const key = `${domain}|${url}`;
-    if (!c.seen.has(key)) {
-      c.seen.add(key);
-      // Provider ordering is preserved: sources are appended in stream order.
-      c.sources.push({ domain, url, metadata });
-    }
-  } catch {
-    // malformed citation URLs never become verified citations — but they are
-    // counted so an all-malformed stream is reported as extraction_failed.
-    c.diagnostics.invalidUrls += 1;
-  }
-}
-
-/**
- * Extract provider-returned citation metadata from one streamed delta.
- * Pure over the collector so provider fixtures can test it directly.
- * Two shapes exist across families:
- *  - delta.annotations[].url_citation (Perplexity, Anthropic, xAI)
- *  - delta.web_search.content[] (Gemini, xAI)
- * Anything else is recorded as an unknown shape — never guessed at, and
- * never parsed out of answer prose.
- */
-export function extractDeltaCitations(delta: SearchDelta, c: Collector): void {
-  // Guard the container itself: a non-array annotations payload (object,
-  // string, ...) is shape drift, recorded — never iterated, never thrown.
-  if (delta.annotations !== undefined && !Array.isArray(delta.annotations)) {
-    c.diagnostics.unknownShapes += 1;
-    delta = { ...delta, annotations: undefined };
-  }
-  for (const ann of delta.annotations ?? []) {
-    if (!ann || typeof ann !== "object") {
-      c.diagnostics.unknownShapes += 1;
-      continue;
-    }
-    if (ann.type === "url_citation") {
-      collectSource(ann.url_citation?.url, ann, c);
-    } else if (typeof ann.type === "string") {
-      // Unknown annotation type: shape drift — record, never fabricate.
-      if (
-        !c.diagnostics.unknownAnnotationTypes.includes(ann.type) &&
-        c.diagnostics.unknownAnnotationTypes.length < MAX_UNKNOWN_TYPES
-      ) {
-        c.diagnostics.unknownAnnotationTypes.push(ann.type);
-      }
-    } else {
-      c.diagnostics.unknownShapes += 1;
-    }
-  }
-  const content = delta.web_search?.content;
-  if (content !== undefined && !Array.isArray(content)) {
-    c.diagnostics.unknownShapes += 1;
-  } else {
-    for (const result of content ?? []) {
-      collectSource(result?.url, result, c);
-    }
-  }
-}
 
 export interface StreamResult {
   answerText: string;
@@ -234,12 +124,11 @@ async function streamCompletion(
   const collector = newCollector();
 
   for await (const chunk of stream) {
-    const delta = chunk.choices?.[0]?.delta as
-      | (typeof chunk.choices[0]["delta"] & SearchDelta)
-      | undefined;
-    if (!delta) continue;
-    if (delta.content) answerText += delta.content;
-    extractDeltaCitations(delta, collector);
+    // Inspect the raw chunk, not only choices[0].delta. Requesty and several
+    // providers attach citations on the chunk root or the terminal `message`
+    // payload; skipping empty-delta chunks dropped those fields.
+    extractChunkCitations(chunk, collector);
+    answerText += deltaContentText(chunk);
   }
 
   const sources = await resolveRedirectSources(

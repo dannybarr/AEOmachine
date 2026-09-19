@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useListRuns } from "@workspace/api-client-react";
 import { useModels, modelLabel } from "@/hooks/use-models";
+import { searchStatusLabel } from "@/lib/model-meta";
 import { Link } from "wouter";
 import { MessageSquare, Bot } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 import { useCompany } from "@/components/CompanyContext";
 
@@ -73,8 +75,13 @@ export default function Chats() {
                     </div>
                   </div>
                   
-                  <div className="md:w-24 text-left md:text-right text-[12px] md:text-[13px] font-medium tabular-nums text-slate-quiet md:text-foreground pt-1">
-                    {run.citationCount} <span className="md:hidden">citations</span>
+                  <div className="md:w-24 text-left md:text-right text-[12px] md:text-[13px] font-medium tabular-nums text-slate-quiet md:text-foreground pt-1 space-y-1">
+                    <div>
+                      {run.citationCount} <span className="md:hidden">citations</span>
+                    </div>
+                    <div>
+                      <ChatSearchBadge searchStatus={run.searchStatus} citationEligible={run.citationEligible} />
+                    </div>
                   </div>
                   
                   <div className="md:w-32 text-right text-[12px] text-slate-quiet pt-1">
@@ -87,5 +94,29 @@ export default function Chats() {
         </div>
       </div>
     </div>
+  );
+}
+
+function ChatSearchBadge({
+  searchStatus,
+  citationEligible,
+}: {
+  searchStatus?: string | null;
+  citationEligible?: boolean | null;
+}) {
+  const s = searchStatusLabel(searchStatus, citationEligible);
+  return (
+    <span
+      className={cn(
+        "text-[9px] font-medium px-1.5 py-0.5 rounded-full uppercase tracking-wide whitespace-nowrap",
+        s.tone === "ok"
+          ? "bg-[var(--positive-surface)] text-positive"
+          : s.tone === "warn"
+            ? "bg-[var(--warning-surface)] text-warning"
+            : "bg-mist text-ash",
+      )}
+    >
+      {s.label}
+    </span>
   );
 }

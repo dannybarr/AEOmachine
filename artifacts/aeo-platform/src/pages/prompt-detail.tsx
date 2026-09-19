@@ -19,7 +19,7 @@ import {
   getGetTrackingJobAttemptsQueryKey
 } from "@workspace/api-client-react";
 import type { ModelInfo, PromptMentionedEntity } from "@workspace/api-client-react";
-import { modelLabel, searchStatusLabel } from "@/lib/model-meta";
+import { modelLabel, searchStatusLabel, visibilityRungLabel } from "@/lib/model-meta";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, ChevronDown, Play, AlertCircle, ExternalLink, Activity, Bot, Target, LineChart, LayoutDashboard, Globe } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -647,6 +647,7 @@ export default function PromptDetail() {
                     <Bot className="w-3.5 h-3.5 text-slate-quiet shrink-0" />
                     <span className="truncate">{modelLabel(models, run.model)}</span>
                     <RunStateBadge searchStatus={run.searchStatus} citationEligible={run.citationEligible} />
+                    <VisibilityRungChip visibilityRung={run.visibilityRung} />
                   </div>
                   <div className="sm:w-12 text-right text-[12px] sm:text-[13px] font-medium tabular-nums text-slate-quiet sm:text-foreground row-start-2 sm:row-start-auto">
                     {run.citationCount} <span className="sm:hidden">links</span>
@@ -772,6 +773,19 @@ function RunStateBadge({ searchStatus, citationEligible }: { searchStatus?: stri
     <span className={cn(
       "text-[9px] font-medium px-1.5 py-0.5 rounded-full uppercase tracking-wide whitespace-nowrap shrink-0",
       s.tone === "warn" ? "bg-[var(--warning-surface)] text-warning" : "bg-mist text-ash"
+    )}>
+      {s.label}
+    </span>
+  );
+}
+
+function VisibilityRungChip({ visibilityRung }: { visibilityRung?: string | null }) {
+  const s = visibilityRungLabel(visibilityRung);
+  if (!s) return null;
+  return (
+    <span className={cn(
+      "text-[9px] font-medium px-1.5 py-0.5 rounded-full uppercase tracking-wide whitespace-nowrap shrink-0",
+      s.tone === "ok" ? "bg-[var(--positive-surface)] text-positive" : s.tone === "warn" ? "bg-[var(--warning-surface)] text-warning" : "bg-mist text-ash"
     )}>
       {s.label}
     </span>

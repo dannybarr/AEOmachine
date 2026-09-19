@@ -24,6 +24,11 @@ export const promptRunsTable = pgTable(
     answerText: text("answer_text").notNull(),
     brandMentioned: boolean("brand_mentioned").notNull().default(false),
     brandPosition: integer("brand_position"),
+    /**
+     * Visibility ladder for the tracked brand on this run:
+     * recommended | cited | mentioned | absent. NULL = legacy (unscored).
+     */
+    visibilityRung: text("visibility_rung"),
     /** provider_search | unsupported | tool_rejected; NULL = legacy (unknown). */
     searchStatus: text("search_status"),
     /** Whether this run could produce verified citations; NULL = legacy. */
@@ -61,6 +66,10 @@ export const promptRunsTable = pgTable(
     check(
       "prompt_runs_entity_extraction_status_check",
       sql`${t.entityExtractionStatus} is null or ${t.entityExtractionStatus} in ('pending', 'running', 'completed', 'failed')`,
+    ),
+    check(
+      "prompt_runs_visibility_rung_check",
+      sql`${t.visibilityRung} is null or ${t.visibilityRung} in ('recommended', 'cited', 'mentioned', 'absent')`,
     ),
   ],
 );

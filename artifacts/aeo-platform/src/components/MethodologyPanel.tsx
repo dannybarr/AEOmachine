@@ -101,8 +101,19 @@ export function MethodologyPanel({ companyId, days }: { companyId?: number; days
                     <li>A citation counts as <span className="font-medium text-foreground">verified</span> only when the provider returned it as structured search metadata alongside the answer. URLs merely mentioned in answer text are never counted.</li>
                     <li>Google grounding redirect links are resolved to the real cited site; the original provider URL is retained for audit.</li>
                     <li>Exact repeated URLs within one answer are deduplicated before storage. Different URLs, query variants, or pages on the same domain can each count as a retrieval. “Citation position” is provider-returned source order, not necessarily the location of an inline footnote.</li>
-                    <li>A search answer with no returned citation metadata contributes zero citations but stays in the denominator. A no-search or tool-rejected answer is citation-ineligible and excluded. When a provider returns citation metadata that cannot be safely verified (malformed or unrecognized format), the run is labeled extraction-failed and excluded from verified metrics entirely — never counted as a clean zero.</li>
+                    <li>A search answer with no returned citation metadata contributes zero citations but stays in the denominator. A no-search or tool-rejected answer is citation-ineligible and excluded. When a provider returns citation metadata that cannot be safely verified (malformed or unrecognized format), the run is labeled extraction-failed and excluded from verified metrics entirely — never counted as a clean zero. Chat-page diagnostics show observed shapes, seen citation keys, and unparsed keys so operators can tell honest zeros from extraction failure.</li>
                     <li>Runs recorded before provenance tracking are kept readable and labeled <span className="font-medium text-foreground">legacy</span>; their citation provenance cannot be reconstructed and is reported separately.</li>
+                  </ul>
+                </section>
+
+                <section className="space-y-1.5">
+                  <h3 className="text-[12px] font-medium uppercase tracking-wider text-ash">Visibility ladder</h3>
+                  <ul className="text-[12px] text-slate-quiet space-y-1 list-disc pl-4">
+                    <li><span className="font-medium text-foreground">Recommended</span> — the tracked brand is an explicit pick or shortlist in the answer.</li>
+                    <li><span className="font-medium text-foreground">Cited</span> — the brand domain appears in verified provider citations, without recommend strength.</li>
+                    <li><span className="font-medium text-foreground">Mentioned</span> — the brand is named in prose without citation gravity or recommendation. Mention is not a recommendation.</li>
+                    <li><span className="font-medium text-foreground">Absent</span> — neither the brand name nor its domain appears in the answer or verified citations.</li>
+                    <li>Legacy runs recorded before this field have no rung. New successful runs persist <span className="font-medium text-foreground">visibilityRung</span> on the run.</li>
                   </ul>
                 </section>
 

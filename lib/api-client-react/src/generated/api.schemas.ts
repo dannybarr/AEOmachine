@@ -113,6 +113,12 @@ export interface CitationDiagnostics {
   unknownShapes: number;
   redirectsResolved: number;
   redirectsFailed: number;
+  /** Recognized citation metadata shapes that produced at least one metadata event */
+  observedShapes?: string[];
+  /** Citation-related keys observed on the stream, including empty payloads */
+  seenCitationKeys?: string[];
+  /** Citation-like keys whose structure could not be parsed into URLs */
+  unparsedCitationKeys?: string[];
 }
 
 export type CitationQualityModelOutcomes = {
@@ -519,6 +525,19 @@ export const PromptRunSearchStatus = {
   tool_rejected: 'tool_rejected',
 } as const;
 
+/**
+ * recommended = explicit pick/shortlist; cited = brand domain in verified citations; mentioned = name in prose without citation gravity; absent = neither; null = legacy unscored run
+ * @nullable
+ */
+export type PromptRunVisibilityRung = typeof PromptRunVisibilityRung[keyof typeof PromptRunVisibilityRung] | null;
+
+export const PromptRunVisibilityRung = {
+  recommended: 'recommended',
+  cited: 'cited',
+  mentioned: 'mentioned',
+  absent: 'absent',
+} as const;
+
 export interface PromptRun {
   id: number;
   promptId: number;
@@ -538,6 +557,11 @@ export interface PromptRun {
   searchStatus?: PromptRunSearchStatus;
   /** @nullable */
   citationEligible?: boolean | null;
+  /**
+   * recommended = explicit pick/shortlist; cited = brand domain in verified citations; mentioned = name in prose without citation gravity; absent = neither; null = legacy unscored run
+   * @nullable
+   */
+  visibilityRung?: PromptRunVisibilityRung;
 }
 
 export type PromptDetail = Prompt & {

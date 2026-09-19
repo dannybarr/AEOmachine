@@ -20,8 +20,12 @@ re-audit provider contracts after any model or router change.
 Rules enforced end-to-end:
 
 - Answers are stored verbatim; citations come **only** from provider-attached
-  streamed metadata (`delta.annotations[].url_citation`,
-  `delta.web_search.content[]`) — never parsed from answer prose.
+  streamed metadata. The extractor reads the **whole chat chunk** (not only
+  `choices[0].delta`) and accepts Requesty Chat Completions `web_search.content[]`,
+  nested and flat `url_citation` annotations, chunk-root `citations` /
+  `search_results`, non-delta `message.annotations`, Gemini `grounding_metadata`,
+  and Anthropic `web_search_result_location`. URLs in answer prose are never
+  counted. See `CITATIONS.md`.
 - Verified-citation predicate everywhere: `citations.provenance = 'provider'`
   AND `prompt_runs.citation_eligible IS TRUE`.
 - `prompt_runs.citation_diagnostics` (jsonb) stores per-run extraction
@@ -42,11 +46,11 @@ marked unavailable with a reason, never substituted).
 
 | Model | Provider | Web search | Extraction | Observed format |
 | --- | --- | --- | --- | --- |
-| openai/gpt-5 | OpenAI | no | none | answer-only (Requesty attaches no search metadata for OpenAI) |
+| openai/gpt-5 | OpenAI | no | none | answer-only (registry keeps search off until a live audit shows streamed citation metadata for this id) |
 | openai/gpt-5-mini | OpenAI | no | none | answer-only |
-| anthropic/claude-sonnet-4-5 | Anthropic | yes | streamed_metadata | `annotations[].url_citation` |
-| google/gemini-2.5-flash | Google | yes | streamed_metadata | `web_search.content[]` via grounding redirects |
-| perplexity/sonar | Perplexity | yes | streamed_metadata | `annotations[].url_citation` |
+| anthropic/claude-sonnet-4-5 | Anthropic | yes | streamed_metadata | `annotations[].url_citation` (nested or flat `url`) |
+| google/gemini-2.5-flash | Google | yes | streamed_metadata | `web_search.content[]` and/or `grounding_metadata.grounding_chunks[].web.uri`; grounding redirects |
+| perplexity/sonar | Perplexity | yes | streamed_metadata | `chunk.citations` / `search_results` and/or `annotations[].url_citation` |
 | xai/grok-4-fast-non-reasoning | xAI | yes | streamed_metadata | both shapes, deduped |
 | moonshot/kimi-k3 | Moonshot | no | none | answer-only |
 | deepinfra/…Llama-3.3-70B-Instruct | Meta | no | none | answer-only |
@@ -117,11 +121,15 @@ message, bearer tokens redacted); raw payloads and secrets are never included.
 ## Regression coverage
 
 - `src/lib/__tests__/simulate.test.ts` — extraction fixtures per provider
-  family, malformed/unknown metadata, outcome classification, registry
-  capability contract.
+  family (including Requesty Chat Completions, Responses-style flat
+  annotations, chunk-root citations, message annotations, Gemini grounding),
+  malformed/unknown metadata, outcome classification, registry capability
+  contract. Prose URLs are asserted not to become citations.
 - `src/lib/__tests__/simulate-outcomes.test.ts` — mocked end-to-end streams:
   every outcome state, tool rejection fallback, retryable error propagation,
-  redirect resolution/failure, truncated streams, full default model coverage.
+  redirect resolution/failure, truncated streams, trailing empty-choices
+  citation chunks, full default model coverage.
+- `src/lib/__tests__/visibilityRung.test.ts` — recommended/cited/mentioned/absent ladder.
 - `src/routes/__tests__/methodology-verified.test.ts`,
   `verified-denominators.test.ts`, `endpoints-verified.test.ts` — downstream
   APIs never present degraded runs as verified evidence.

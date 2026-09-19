@@ -17,4 +17,10 @@ export interface CitationDiagnostics {
   unknownShapes: number;
   redirectsResolved: number;
   redirectsFailed: number;
+  /** Recognized citation metadata shapes that produced at least one metadata event */
+  observedShapes?: string[];
+  /** Citation-related keys observed on the stream, including empty payloads */
+  seenCitationKeys?: string[];
+  /** Citation-like keys whose structure could not be parsed into URLs */
+  unparsedCitationKeys?: string[];
 }
